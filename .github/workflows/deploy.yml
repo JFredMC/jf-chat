@@ -1,0 +1,38 @@
+name: Deploy static content to Pages
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+
+      - name: Install Dependencies
+        run: yarn install
+
+      - name: Build app
+        run: yarn run build -- --base-href /jf-chat/
+      
+      - name: Artifact upload
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: github-pages
+          path: dist/jf-chat/browser
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Github Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
