@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -11,7 +11,7 @@ const USERS = ['Juan', 'Maria', 'Carlos', 'Ana', 'Pedro'];
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],
   standalone: true, // Si estás usando componentes independientes
-  imports: [CommonModule, FormsModule] // Importa FormsModule para ngModel
+  imports: [CommonModule, FormsModule, RouterLink] // Importa FormsModule para ngModel
 })
 export class Login {
   username = '';
