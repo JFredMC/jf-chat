@@ -1,52 +1,58 @@
-import { Component } from '@angular/core';
+// register.component.ts
+import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-
-// Usuarios predefinidos
-const EXISTING_USERS = ['Juan', 'Maria', 'Carlos', 'Ana', 'Pedro'];
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ControlErrors } from '../../errors/control-errors/control-errors';
+import { ValidationService } from '../../../services/validators.service';
 
 @Component({
   selector: 'app-register',
   templateUrl: './register.html',
   styleUrls: ['./register.scss'],
   standalone: true,
-  imports: [FormsModule, CommonModule, RouterLink]
+  imports: [ReactiveFormsModule, CommonModule, RouterLink, ControlErrors]
 })
 export class Register {
-  username = '';
-  error = '';
-  success = false;
-  existingUsers = EXISTING_USERS;
+  private readonly router = inject(Router);
+  private readonly fb = inject(FormBuilder);
+  private readonly validationService = inject(ValidationService);
 
-  constructor(private router: Router) {}
+  public registerForm: FormGroup;
+  success = false;
+  existingUsers = this.validationService.getExistingUsers();
+
+  constructor() {
+    this.registerForm = this.fb.group({
+      username: ['', [
+        Validators.required,
+        Validators.minLength(3),
+        this.validationService.existingUserValidator()
+      ]],
+      password: ['', [
+        Validators.required, 
+        Validators.minLength(8),
+        this.validationService.strongPasswordValidator()
+      ]],
+    });
+  }
+
+  get username() {
+    return this.registerForm.get('username');
+  }
 
   handleRegister(): void {
-    // Reiniciar estado de error
-    this.error = '';
+    this.registerForm.markAllAsTouched();
 
-    if (!this.username.trim()) {
-      this.error = 'Por favor ingresa un nombre de usuario';
-      return;
+    if (this.registerForm.valid) {
+      const usernameValue = this.username?.value;
+      
+      this.success = true;
+      localStorage.setItem('jfchat_username', usernameValue);
+
+      setTimeout(() => {
+        this.router.navigate(['/']);
+      }, 1500);
     }
-
-    if (this.username.length < 3) {
-      this.error = 'El nombre de usuario debe tener al menos 3 caracteres';
-      return;
-    }
-
-    if (EXISTING_USERS.includes(this.username)) {
-      this.error = 'Este usuario ya existe. Por favor elige otro nombre.';
-      return;
-    }
-
-    // Simular registro exitoso
-    this.success = true;
-    localStorage.setItem('jfchat_username', this.username);
-
-    // Redirigir después de 1.5 segundos
-    setTimeout(() => {
-      this.router.navigate(['/']);
-    }, 1500);
   }
 }

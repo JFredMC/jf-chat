@@ -1,36 +1,52 @@
-import { Component } from '@angular/core';
+// login.component.ts
+import { Component, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ControlErrors } from '../../errors/control-errors/control-errors';
+import { ValidationService } from '../../../services/validators.service';
 
-// Usuarios predefinidos
 const USERS = ['Juan', 'Maria', 'Carlos', 'Ana', 'Pedro'];
 
 @Component({
   selector: 'app-login',
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],
-  standalone: true, // Si estás usando componentes independientes
-  imports: [CommonModule, FormsModule, RouterLink] // Importa FormsModule para ngModel
+  imports: [CommonModule, ReactiveFormsModule, ControlErrors, RouterLink],
 })
-export class Login {
-  username = '';
-  error = '';
+export class Login implements OnInit {
+  private readonly router = inject(Router);
+  private readonly fb = inject(FormBuilder);
+  private readonly validationService = inject(ValidationService);
+  
+  public form = this.fb.group({
+    username: ['', [Validators.required, Validators.minLength(3)]],
+    password: ['', [
+      Validators.required, 
+      Validators.minLength(8),
+      this.validationService.strongPasswordValidator()
+    ]],
+  });
 
-  constructor(private router: Router) {}
+  ngOnInit() {}
 
   handleLogin(): void {
-    if (!this.username.trim()) {
-      this.error = 'Por favor ingresa un nombre de usuario';
-      return;
+    if (this.form.valid) {
+      this.router.navigate(['/']);
+    } else {
+      // Marcar todos los campos como touched para mostrar errores
+      this.form.markAllAsTouched();
+      Object.keys(this.form.controls).forEach(key => {
+        this.form.get(key)?.markAsDirty();
+      });
     }
+  }
 
-    if (!USERS.includes(this.username)) {
-      this.error = 'Usuario no encontrado. Por favor regístrate primero.';
-      return;
-    }
+  get username() {
+    return this.form.get('username');
+  }
 
-    localStorage.setItem('jfchat_username', this.username);
-    this.router.navigate(['/']);
+  get password() {
+    return this.form.get('password');
   }
 }

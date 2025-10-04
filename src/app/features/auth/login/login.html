@@ -1,3 +1,4 @@
+<!-- login.html -->
 <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
   <div class="w-full max-w-md shadow-xl bg-white dark:bg-gray-800 rounded-lg">
     <div class="space-y-1 text-center p-6">
@@ -6,33 +7,71 @@
           JF
         </div>
       </div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Bienvenido a JfChat</h1>
-      <p class="text-gray-500 dark:text-gray-400">Ingresa tu nombre de usuario para continuar</p>
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white" i18n>
+        Bienvenido a JfChat
+      </h1>
+      <p class="text-gray-500 dark:text-gray-400" i18n>Ingresa tus credenciales para continuar</p>
     </div>
     <div class="p-6 pt-0">
-      <form (ngSubmit)="handleLogin()" class="space-y-4">
+      <form [formGroup]="form" (ngSubmit)="handleLogin()" class="space-y-4">
         <div class="space-y-2">
-          <label for="username" class="text-sm font-medium text-gray-700 dark:text-gray-300">Nombre de usuario</label>
+          <label
+            for="username"
+            class="text-sm font-medium text-gray-700 dark:text-gray-300"
+            i18n
+          >
+            Nombre de usuario
+          </label>
           <input
             id="username"
             type="text"
+            i18n-placeholder
             placeholder="Ingresa tu usuario"
-            [(ngModel)]="username"
-            (input)="error = ''"
+            formControlName="username"
             name="username"
             class="flex h-11 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-50 dark:focus:ring-gray-400 dark:focus:ring-offset-gray-900"
+            [class.border-red-500]="username?.invalid && (username?.dirty || username?.touched)"
           />
-          <p *ngIf="error" class="text-sm text-red-500">{{ error }}</p>
+          <app-control-error controlName="username"></app-control-error>
         </div>
+
+        <div class="space-y-2">
+          <label
+            for="password"
+            class="text-sm font-medium text-gray-700 dark:text-gray-300"
+            i18n
+          >
+            Contraseña
+          </label>
+          <input
+            id="password"
+            type="password"
+            i18n-placeholder
+            placeholder="Ingresa tu contraseña"
+            formControlName="password"
+            name="password"
+            class="flex h-11 w-full rounded-md border border-gray-300 bg-transparent px-3 py-2 text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-700 dark:text-gray-50 dark:focus:ring-gray-400 dark:focus:ring-offset-gray-900"
+            [class.border-red-500]="password?.invalid && (password?.dirty || password?.touched)"
+          />
+          <app-control-error controlName="password"></app-control-error>
+        </div>
+
         <button
           type="submit"
-          class="inline-flex w-full items-center justify-center rounded-md bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-200 dark:focus:ring-gray-400 dark:focus:ring-offset-gray-900 h-11 text-base">
+          class="inline-flex w-full items-center justify-center rounded-md bg-gray-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:opacity-50 dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-200 dark:focus:ring-gray-400 dark:focus:ring-offset-gray-900 h-11 text-base"
+          [disabled]="form.invalid"
+          i18n
+        >
           Iniciar sesión
         </button>
       </form>
       <div class="mt-6 text-center text-sm">
-        <span class="text-gray-500 dark:text-gray-400">¿No tienes una cuenta? </span>
-        <a routerLink="/register" class="text-blue-600 hover:underline font-medium dark:text-blue-400">Regístrate aquí</a>
+        <span class="text-gray-500 dark:text-gray-400" i18n>
+          ¿No tienes una cuenta?
+        </span>
+        <a routerLink="/register" class="text-blue-600 hover:underline font-medium dark:text-blue-400" i18n>
+          Regístrate aquí
+        </a>
       </div>
     </div>
   </div>
