@@ -9,5 +9,5 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.scss'
 })
 export class App {
-  protected title = 'jf-chat';
+  protected title = $localize`JfChat`;
 }
