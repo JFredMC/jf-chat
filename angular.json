@@ -7,6 +7,12 @@
   "newProjectRoot": "projects",
   "projects": {
     "jf-chat": {
+      "i18n": {
+        "sourceLocale": "es-CO",
+        "locales": {
+          "en": "src/locale/message.en.xlf"
+        }
+      },
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -31,6 +37,9 @@
             ],
             "styles": [
               "src/styles.scss"
+            ],
+            "polyfills": [
+              "@angular/localize/init"
             ]
           },
           "configurations": {
@@ -85,6 +94,9 @@
             ],
             "styles": [
               "src/styles.scss"
+            ],
+            "polyfills": [
+              "@angular/localize/init"
             ]
           }
         }
