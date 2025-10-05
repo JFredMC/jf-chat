@@ -18,7 +18,7 @@ jobs:
         run: yarn install
 
       - name: Build app
-        run: yarn run build
+        run: yarn run build -- --base-href /jf-chat/
 
       - name: Artifact upload
         uses: actions/upload-pages-artifact@v3
