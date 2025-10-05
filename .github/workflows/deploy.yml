@@ -12,13 +12,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
 
       - name: Install Dependencies
         run: yarn install
 
       - name: Build app
-        run: yarn run build -- --base-href /jf-chat/
+        run: yarn run build -- --base-href /jf-chat/ --configuration production
       
       - name: Artifact upload
         uses: actions/upload-pages-artifact@v3
@@ -32,6 +32,9 @@ jobs:
       pages: write
       id-token: write
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to Github Pages
         id: deployment
