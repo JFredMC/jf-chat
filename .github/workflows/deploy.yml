@@ -18,7 +18,8 @@ jobs:
         run: yarn install
 
       - name: Build app
-        run: yarn run build -- --base-href /jf-chat/
+        run: yarn run build --configuration production --base-href /jf-chat/
+
       
       - name: Artifact upload
         uses: actions/upload-pages-artifact@v3
@@ -32,6 +33,9 @@ jobs:
       pages: write
       id-token: write
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to Github Pages
         id: deployment
