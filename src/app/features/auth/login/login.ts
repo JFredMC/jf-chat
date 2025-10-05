@@ -1,12 +1,12 @@
 // login.component.ts
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, effect, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ControlErrors } from '../../errors/control-errors/control-errors';
 import { ValidationService } from '../../../services/validators.service';
-
-const USERS = ['Juan', 'Maria', 'Carlos', 'Ana', 'Pedro'];
+import { AuthService } from '../../../services/auth.service';
+import { SweetAlertService } from '../../../services/sweet-alert.service';
 
 @Component({
   selector: 'app-login',
@@ -14,11 +14,14 @@ const USERS = ['Juan', 'Maria', 'Carlos', 'Ana', 'Pedro'];
   styleUrls: ['./login.scss'],
   imports: [CommonModule, ReactiveFormsModule, ControlErrors, RouterLink],
 })
-export class Login implements OnInit {
+export class Login {
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
   private readonly validationService = inject(ValidationService);
+  private readonly authService = inject(AuthService);
+  private readonly sweetAlertService = inject(SweetAlertService);
   
+  public isLoadingBtn = this.authService.isLoadingBtn;
   public form = this.fb.group({
     username: ['', [Validators.required, Validators.minLength(3)]],
     password: ['', [
@@ -28,17 +31,30 @@ export class Login implements OnInit {
     ]],
   });
 
-  ngOnInit() {}
+  constructor() {
+    effect(() => {
+      this.isLoadingBtn.set(this.authService.isLoadingBtn());
+    });
+  }
 
   handleLogin(): void {
     if (this.form.valid) {
-      this.router.navigate(['/']);
+      const { username, password } = this.form.value;
+      if(username && password) {
+        this.authService.login({ username, password }).subscribe({
+          next: (response) => {
+            this.router.navigate(['/']);
+          },
+          error: (error) => {
+            this.sweetAlertService.showAlert(
+              $localize`Inicio de sesión`,
+              error
+            )
+          }
+        });
+      }
     } else {
-      // Marcar todos los campos como touched para mostrar errores
       this.form.markAllAsTouched();
-      Object.keys(this.form.controls).forEach(key => {
-        this.form.get(key)?.markAsDirty();
-      });
     }
   }
 

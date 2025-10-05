@@ -8,14 +8,13 @@ import { ConfigService } from './config.service';
 import { IUser } from '../types/user';
 import { LoginRequest, LoginResponse } from '../types/auth';
 
-
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private http = inject(HttpClient);
-  private router = inject(Router);
-  private configService = inject(ConfigService);
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly configService = inject(ConfigService);
 
   // Signals
   isLoading = signal<boolean>(false);
@@ -55,17 +54,16 @@ export class AuthService {
    */
   public login(credentials: LoginRequest): Observable<LoginResponse> {
     this.isLoadingBtn.set(true);
-    this.error.set(null);
 
     const url = this.configService.getApiUrl('/auth/login');
 
     return this.http.post<LoginResponse>(url, credentials).pipe(
-      tap(response => {
+      tap((response) => {
         this.handleLoginSuccess(response);
       }),
-      catchError(error => {
-        this.error.set(this.getErrorMessage(error));
-        return of(null as any);
+      catchError((error) => {
+        const errorMessage = this.getErrorMessage(error);
+        return throwError(() => errorMessage);
       }),
       finalize(() => {
         this.isLoadingBtn.set(false);
@@ -78,7 +76,6 @@ export class AuthService {
    */
   public register(userData: any): Observable<LoginResponse> {
     this.isLoadingBtn.set(true);
-    this.error.set(null);
 
     const url = this.configService.getApiUrl('/auth/register');
 
@@ -87,7 +84,7 @@ export class AuthService {
         this.handleLoginSuccess(response);
       }),
       catchError(error => {
-        this.error.set(this.getErrorMessage(error));
+        this.getErrorMessage(error);
         return of(null as any);
       }),
       finalize(() => {
@@ -101,7 +98,6 @@ export class AuthService {
    */
   public getCurrentUser(): Observable<IUser> {
     this.isLoading.set(true);
-    this.error.set(null);
 
     const url = this.configService.getApiUrl('/auth/current');
 
@@ -111,7 +107,7 @@ export class AuthService {
         localStorage.setItem('jfchat_user', JSON.stringify(user));
       }),
       catchError(error => {
-        this.error.set(this.getErrorMessage(error));
+        this.getErrorMessage(error);
         this.clearAuthData();
         return of(null as any);
       }),
@@ -143,7 +139,6 @@ export class AuthService {
    */
   public updateProfile(userData: Partial<IUser>): Observable<IUser> {
     this.isLoadingBtn.set(true);
-    this.error.set(null);
 
     const url = this.configService.getApiUrl('/auth/profile');
 
@@ -153,7 +148,7 @@ export class AuthService {
         localStorage.setItem('jfchat_user', JSON.stringify(updatedUser));
       }),
       catchError(error => {
-        this.error.set(this.getErrorMessage(error));
+        this.getErrorMessage(error);
         return of(null as any);
       }),
       finalize(() => {
@@ -170,13 +165,12 @@ export class AuthService {
     newPassword: string;
   }): Observable<void> {
     this.isLoadingBtn.set(true);
-    this.error.set(null);
 
     const url = this.configService.getApiUrl('/auth/password');
 
     return this.http.patch<void>(url, passwordData).pipe(
       catchError(error => {
-        this.error.set(this.getErrorMessage(error));
+        this.getErrorMessage(error);
         return of(null as any);
       }),
       finalize(() => {
@@ -251,9 +245,9 @@ export class AuthService {
 
   private getErrorMessage(error: any): string {
     if (error.status === 401) {
-      return $localize`Credenciales inválidas`;
+      return $localize`No tienes autorización`;
     } else if (error.status === 404) {
-      return $localize`Servicio no disponible`;
+      return $localize`Usuario o contraseña invalido`;
     } else if (error.status >= 500) {
       return $localize`Error del servidor, intenta más tarde`;
     } else {
@@ -279,7 +273,6 @@ export class AuthService {
   }
 
   clearError(): void {
-    this.error.set(null);
   }
 
   // Método para debug (opcional)
