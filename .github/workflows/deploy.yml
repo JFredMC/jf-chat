@@ -18,7 +18,7 @@ jobs:
         run: yarn install
 
       - name: Build app
-        run: yarn run build --configuration=production --base-href /jf-chat/ # Use the production configuration
+        run: yarn run build
 
       - name: Artifact upload
         uses: actions/upload-pages-artifact@v3
@@ -32,9 +32,6 @@ jobs:
       pages: write
       id-token: write
     runs-on: ubuntu-latest
-    environment: 
-      name: production # Declaring the deployment environment
-      url: ${{ steps.deployment.outputs.page_url }} # Optional: Links the environment to your Pages URL
     steps:
       - name: Deploy to Github Pages
         id: deployment
