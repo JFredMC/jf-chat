@@ -230,10 +230,10 @@ export class AuthService {
     
     // Guardar en localStorage
     localStorage.setItem('jfchat_user', JSON.stringify(response.user));
-    localStorage.setItem('jfchat_token', response.token);
+    localStorage.setItem('jfchat_token', response.accesToken);
     localStorage.setItem('jfchat_refresh_token', response.refreshToken);
     
-    this.router.navigate(['/']);
+    this.router.navigate(['/chat']);
   }
 
   private clearAuthData(): void {

@@ -7,6 +7,6 @@ export interface LoginRequest {
 
 export interface LoginResponse {
   user: IUser;
-  token: string;
+  accesToken: string;
   refreshToken: string;
 }

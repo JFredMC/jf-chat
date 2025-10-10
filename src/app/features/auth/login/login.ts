@@ -43,7 +43,7 @@ export class Login {
       if(username && password) {
         this.authService.login({ username, password }).subscribe({
           next: (response) => {
-            this.router.navigate(['/']);
+            this.router.navigate(['/chat']);
           },
           error: (error) => {
             this.sweetAlertService.showAlert(
