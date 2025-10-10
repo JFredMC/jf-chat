@@ -1,46 +1,176 @@
 <!-- features/chat/layout/chat-layout.html -->
-<div class="h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
+<div class="h-screen flex flex-col bg-gray-50 dark:bg-gray-900" (click)="closeAllMenus()">
   <!-- Header -->
-  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+  <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3">
     <div class="flex items-center justify-between">
-      <div class="flex items-center space-x-4">
-        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-          {{ userInitials() }}
-        </div>
-        <div>
-          <h1 class="text-lg font-semibold text-gray-900 dark:text-white">JfChat</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400">
-            {{ currentUser()?.name || currentUser()?.username }}
-          </p>
+      <!-- Left side: Hamburger menu and logo -->
+      <div class="flex items-center space-x-3">
+        <!-- Hamburger menu for mobile -->
+        <button
+          class="md:hidden p-2 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          (click)="$event.stopPropagation(); toggleMobileMenu()"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+
+        <!-- Logo and app name -->
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+            JF
+          </div>
+          <h1 class="text-lg font-semibold text-gray-900 dark:text-white hidden sm:block">JfChat</h1>
         </div>
       </div>
-      
-      <button
-        (click)="handleLogout()"
-        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
-        i18n
-      >
-        Cerrar sesión
-      </button>
+
+      <!-- Right side: User profile -->
+      <div class="relative">
+        <button
+          class="flex items-center space-x-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          (click)="$event.stopPropagation(); toggleProfileMenu()"
+        >
+          <!-- Avatar con foto o iniciales -->
+          <div 
+            class="w-8 h-8 rounded-full flex items-center justify-center text-white font-medium text-sm"
+            [class]="currentUser()?.avatar_url ? '' : userAvatarColor()"
+          >
+            @if (currentUser()?.avatar_url) {
+              <img 
+                [src]="currentUser()?.avatar_url" 
+                [alt]="getDisplayName()"
+                class="w-8 h-8 rounded-full object-cover"
+              >
+            } @else {
+              {{ userInitials() }}
+            }
+          </div>
+          
+          <!-- Flecha indicadora -->
+          <svg 
+            class="w-4 h-4 text-gray-500 transition-transform" 
+            [class.rotate-180]="isProfileMenuOpen()"
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+
+        <!-- Menú desplegable del perfil -->
+        @if (isProfileMenuOpen()) {
+          <div 
+            class="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50"
+            (click)="$event.stopPropagation()"
+          >
+            <!-- Información del usuario -->
+            <div class="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+              <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                {{ getDisplayName() }}
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {{ currentUser()?.username }}
+              </p>
+            </div>
+
+            <!-- Cambio de idioma -->
+            <button
+              class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              (click)="changeLanguage('es')"
+            >
+              <span class="flex-1 text-left" i18n>Español</span>
+              <span class="text-xs text-gray-400">ES</span>
+            </button>
+
+            <button
+              class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              (click)="changeLanguage('en')"
+            >
+              <span class="flex-1 text-left" i18n>English</span>
+              <span class="text-xs text-gray-400">EN</span>
+            </button>
+
+            <!-- Modo oscuro/claro -->
+            <button
+              class="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+              (click)="toggleTheme()"
+            >
+              <span class="flex-1 text-left" i18n>
+                {{ isDarkMode() ? 'Modo Claro' : 'Modo Oscuro' }}
+              </span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                @if (isDarkMode()) {
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"></path>
+                } @else {
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                }
+              </svg>
+            </button>
+
+            <!-- Separador -->
+            <div class="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+
+            <!-- Cerrar sesión -->
+            <button
+              class="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+              (click)="handleLogout()"
+            >
+              <span class="flex-1 text-left" i18n>Cerrar sesión</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+              </svg>
+            </button>
+          </div>
+        }
+      </div>
     </div>
   </header>
 
   <!-- Main Content -->
   <div class="flex-1 flex">
+    <!-- Sidebar Overlay para móviles -->
+    @if (isMobileMenuOpen()) {
+      <div 
+        class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
+        (click)="toggleMobileMenu()"
+      ></div>
+    }
+
     <!-- Sidebar -->
-    <aside class="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 p-4">
-      <div class="space-y-4">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white" i18n>Conversaciones</h2>
-        <!-- Aquí irá la lista de conversaciones -->
-        <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-          <p i18n>No hay conversaciones aún</p>
+    <aside 
+      class="fixed inset-y-0 left-0 z-30 w-3/4 max-w-sm bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-80 md:z-auto"
+      [class]="{
+        'translate-x-0': isMobileMenuOpen(),
+        '-translate-x-full': !isMobileMenuOpen()
+      }"
+    >
+      <div class="p-4 h-full flex flex-col">
+        <!-- Header del sidebar -->
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white" i18n>Conversaciones</h2>
+          <button
+            class="md:hidden p-1 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
+            (click)="toggleMobileMenu()"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Lista de conversaciones -->
+        <div class="flex-1 overflow-y-auto">
+          <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+            <p i18n>No hay conversaciones aún</p>
+          </div>
         </div>
       </div>
     </aside>
 
     <!-- Chat Area -->
-    <main class="flex-1 flex flex-col">
-      <div class="flex-1 flex items-center justify-center">
+    <main class="flex-1 flex flex-col min-w-0">
+      <div class="flex-1 flex items-center justify-center p-4">
         <div class="text-center">
           <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 flex items-center justify-center">
             <span class="text-2xl">💬</span>
@@ -48,8 +178,8 @@
           <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2" i18n>
             Bienvenido al Chat
           </h3>
-          <p class="text-gray-500 dark:text-gray-400" i18n>
-            Selecciona una conversación para comenzar a chatear
+          <p class="text-gray-500 dark:text-gray-400 max-w-sm" i18n>
+            Selecciona una conversación para comenzar a chatear o inicia una nueva conversación
           </p>
         </div>
       </div>
