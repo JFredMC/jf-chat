@@ -22,6 +22,7 @@ export class Login {
   private readonly sweetAlertService = inject(SweetAlertService);
   
   public isLoadingBtn = this.authService.isLoadingBtn;
+  public showPassword = signal<boolean>(false);
   public form = this.fb.group({
     username: ['', [Validators.required, Validators.minLength(3)]],
     password: ['', [
@@ -56,6 +57,10 @@ export class Login {
     } else {
       this.form.markAllAsTouched();
     }
+  }
+
+  togglePasswordVisibility(): void {
+    this.showPassword.set(!this.showPassword());
   }
 
   get username() {

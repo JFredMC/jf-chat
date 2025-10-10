@@ -7,12 +7,12 @@ import { ChatLayout } from './features/chat/layout/chat-layout';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/login',
+    redirectTo: 'auth/login',
     pathMatch: 'full',
     title: 'JfChat'
   },
   {
-    path: 'login',
+    path: 'auth/login',
     component: Login,
     title: 'Login'
   },
