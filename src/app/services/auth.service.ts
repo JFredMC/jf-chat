@@ -120,7 +120,7 @@ export class AuthService {
       finalize(() => {
         this.clearAuthData();
         this.isLoadingBtn.set(false);
-        this.router.navigate(['/login']);
+        this.router.navigate(['/auth/login']);
       })
     ).subscribe();
   }
