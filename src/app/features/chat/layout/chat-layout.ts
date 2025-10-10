@@ -1,9 +1,10 @@
-// features/chat/layout/chat-layout.ts
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../services/auth.service';
 import { SweetAlertService } from '../../../services/sweet-alert.service';
 import { ThemeService } from '../../../services/theme.service';
+import { UsersService } from '../../user/services/user.service';
+import { LanguageService } from '../../../services/language.service';
 
 @Component({
   selector: 'app-chat-layout',
@@ -13,13 +14,19 @@ import { ThemeService } from '../../../services/theme.service';
 })
 export class ChatLayout {
   private readonly authService = inject(AuthService);
+  private readonly usersService = inject(UsersService);
   private readonly sweetAlertService = inject(SweetAlertService);
   private readonly themeService = inject(ThemeService);
+  private readonly languageService = inject(LanguageService);
 
   protected currentUser = this.authService.currentUser;
-  protected userInitials = this.authService.userInitials;
-  protected userAvatarColor = this.authService.userAvatarColor;
-  protected isDarkMode = this.themeService.isDarkMode;
+  protected userInitials = this.usersService.userInitials;
+  protected userAvatarColor = this.usersService.userAvatarColor;
+  protected isDarkMode = computed(() => this.themeService.isDarkMode());
+  
+  // Señales para los idiomas
+  protected currentLanguage = this.languageService.language;
+  protected isLanguageMenuOpen = signal(false);
 
   // Señales para controlar estados del UI
   protected isProfileMenuOpen = signal(false);
@@ -28,6 +35,10 @@ export class ChatLayout {
 
   toggleProfileMenu(): void {
     this.isProfileMenuOpen.update(value => !value);
+  }
+
+  toggleLanguageMenu(): void {
+    this.isLanguageMenuOpen.update(value => !value);
   }
 
   toggleSidebar(): void {
@@ -40,25 +51,34 @@ export class ChatLayout {
 
   closeAllMenus(): void {
     this.isProfileMenuOpen.set(false);
+    this.isLanguageMenuOpen.set(false);
     this.isSidebarOpen.set(false);
     this.isMobileMenuOpen.set(false);
   }
 
   toggleTheme(): void {
-    this.themeService.toggleDarkMode();
-    this.isProfileMenuOpen.set(false);
+    this.themeService.toggleTheme();
   }
 
-  changeLanguage(lang: string): void {
-    // Aquí implementarías el cambio de idioma
-    console.log('Cambiar idioma a:', lang);
-    this.isProfileMenuOpen.set(false);
+  changeLanguage(lang: 'es' | 'en'): void {
+    this.languageService.setLanguage(lang);
+    this.isLanguageMenuOpen.set(false);
+  }
+
+  getLanguageName(lang: 'es' | 'en'): string {
+    return this.languageService.getLanguageName(lang);
+  }
+
+  getLanguageFlag(lang: 'es' | 'en'): string {
+    return this.languageService.getLanguageFlag(lang);
   }
 
   handleLogout(): void {
     this.sweetAlertService.confirm(
       $localize`Cerrar sesión`,
       $localize`¿Estas seguro que deseas cerrar sesión?`,
+      $localize`Si`,
+      $localize`Cancelar`,
     ).then((result) => {
       if (result.isConfirmed) {
         this.authService.logout();
@@ -68,8 +88,8 @@ export class ChatLayout {
 
   getDisplayName(): string {
     const user = this.currentUser();
-    if (user?.fist_name && user?.last_name) {
-      return `${user.fist_name} ${user.last_name}`;
+    if (user?.first_name && user?.last_name) {
+      return `${user.first_name} ${user.last_name}`;
     }
     return user?.username || 'Usuario';
   }

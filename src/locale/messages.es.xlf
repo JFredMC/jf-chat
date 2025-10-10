@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
-  <file source-language="es-CO" datatype="plaintext" original="ng2.template" target-language="en">
+  <file source-language="es-CO" datatype="plaintext" original="ng2.template" target-language="es">
     <body>
       <trans-unit id="7462543086993218645" datatype="html">
         <source>JfChat</source>
@@ -8,139 +8,139 @@
       </trans-unit>
       <trans-unit id="1178261007085347702" datatype="html">
         <source> Bienvenido a JfChat </source>
-        <target>Welcome to JfChat</target>
+        <target>Bienvenido a JfChat</target>
       </trans-unit>
       <trans-unit id="1347862954321083509" datatype="html">
         <source>Ingresa tus credenciales para continuar</source>
-        <target>Enter your credentials to continue</target>
+        <target>Ingresa tus credenciales para continuar</target>
       </trans-unit>
       <trans-unit id="7070422507196875140" datatype="html">
         <source> Nombre de usuario </source>
-        <target>Username</target>
+        <target>Nombre de usuario</target>
       </trans-unit>
       <trans-unit id="6359871601534423100" datatype="html">
         <source>Ingresa tu usuario</source>
-        <target>Enter your username</target>
+        <target>Ingresa tu usuario</target>
       </trans-unit>
       <trans-unit id="8281955107839295655" datatype="html">
         <source> Contraseña </source>
-        <target>Password</target>
+        <target>Contraseña</target>
       </trans-unit>
       <trans-unit id="4765403919935898492" datatype="html">
         <source>Ingresa tu contraseña</source>
-        <target>Enter your password</target>
+        <target>Ingresa tu contraseña</target>
       </trans-unit>
       <trans-unit id="5726552244367384581" datatype="html">
         <source><x id="START_BLOCK_IF" equiv-text="@if(isLoadingBtn()) {"/><x id="START_TAG__SVG_SVG" ctype="x-_svg_svg" equiv-text="&lt;svg aria-hidden=&quot;true&quot; class=&quot;inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600&quot; viewBox=&quot;0 0 100 101&quot; fill=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;&gt;"/><x id="START_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z&quot; fill=&quot;currentColor&quot;/&gt;"/><x id="CLOSE_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="START_TAG__SVG_PATH_1" ctype="x-_svg_path_1" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="CLOSE_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="CLOSE_TAG__SVG_SVG" ctype="x-_svg_svg" equiv-text="&lt;/svg&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Iniciar sesión </source>
-        <target><x id="START_BLOCK_IF" equiv-text="@if(isLoadingBtn()) {"/><x id="START_TAG__SVG_SVG" ctype="x-_svg_svg" equiv-text="&lt;svg aria-hidden=&quot;true&quot; class=&quot;inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600&quot; viewBox=&quot;0 0 100 101&quot; fill=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;&gt;"/><x id="START_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z&quot; fill=&quot;currentColor&quot;/&gt;"/><x id="CLOSE_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="START_TAG__SVG_PATH_1" ctype="x-_svg_path_1" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="CLOSE_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="CLOSE_TAG__SVG_SVG" ctype="x-_svg_svg" equiv-text="&lt;/svg&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Sign in</target>
+        <target><x id="START_BLOCK_IF" equiv-text="@if(isLoadingBtn()) {"/><x id="START_TAG__SVG_SVG" ctype="x-_svg_svg" equiv-text="&lt;svg aria-hidden=&quot;true&quot; class=&quot;inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600&quot; viewBox=&quot;0 0 100 101&quot; fill=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;&gt;"/><x id="START_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z&quot; fill=&quot;currentColor&quot;/&gt;"/><x id="CLOSE_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="START_TAG__SVG_PATH_1" ctype="x-_svg_path_1" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="CLOSE_TAG__SVG_PATH" ctype="x-_svg_path" equiv-text="&lt;path d=&quot;M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z&quot; fill=&quot;currentFill&quot;/&gt;"/><x id="CLOSE_TAG__SVG_SVG" ctype="x-_svg_svg" equiv-text="&lt;/svg&gt;"/><x id="CLOSE_BLOCK_IF" equiv-text="}"/> Iniciar sesión</target>
       </trans-unit>
       <trans-unit id="1603872516501844352" datatype="html">
         <source> ¿No tienes una cuenta? </source>
-        <target>Don't have an account?</target>
+        <target>¿No tienes una cuenta?</target>
       </trans-unit>
       <trans-unit id="3639620175859462261" datatype="html">
         <source> Regístrate aquí </source>
-        <target>Sign up here</target>
+        <target>Regístrate aquí</target>
       </trans-unit>
       <trans-unit id="2425823832164539467" datatype="html">
         <source>Inicio de sesión</source>
-        <target>Sign in</target>
+        <target>Inicio de sesión</target>
       </trans-unit>
       <trans-unit id="8180795891255083525" datatype="html">
         <source>Crear cuenta</source>
-        <target>Create account</target>
+        <target>Crear cuenta</target>
       </trans-unit>
       <trans-unit id="4961078816213188290" datatype="html">
         <source>Elige un nombre de usuario para comenzar</source>
-        <target>Choose a username to get started</target>
+        <target>Elige un nombre de usuario para comenzar</target>
       </trans-unit>
       <trans-unit id="2761988651644355410" datatype="html">
         <source>¡Registro exitoso!</source>
-        <target>Successful registration!</target>
+        <target>¡Registro exitoso!</target>
       </trans-unit>
       <trans-unit id="6175957333100282296" datatype="html">
         <source>Redirigiendo al chat...</source>
-        <target>Redirecting to chat...</target>
+        <target>Redirigiendo al chat...</target>
       </trans-unit>
       <trans-unit id="1240734919762632712" datatype="html">
         <source>Usuarios existentes:</source>
-        <target>Existing users:</target>
+        <target>Usuarios existentes:</target>
       </trans-unit>
       <trans-unit id="1681440148904433660" datatype="html">
         <source>¿Ya tienes una cuenta?</source>
-        <target>Already have an account?</target>
+        <target>¿Ya tienes una cuenta?</target>
       </trans-unit>
       <trans-unit id="7364888105505373409" datatype="html">
         <source> Inicia sesión </source>
-        <target>Sign in</target>
+        <target>Inicia sesión</target>
       </trans-unit>
       <trans-unit id="1294390259244223882" datatype="html">
         <source>Cerrar sesión</source>
-        <target>Sign out</target>
+        <target>Cerrar sesión</target>
       </trans-unit>
       <trans-unit id="3270973786124527876" datatype="html">
         <source>Conversaciones</source>
-        <target>Conversations</target>
+        <target>Conversaciones</target>
       </trans-unit>
       <trans-unit id="1487289161793447250" datatype="html">
         <source>No hay conversaciones aún</source>
-        <target>No conversations yet</target>
+        <target>No hay conversaciones aún</target>
       </trans-unit>
       <trans-unit id="927476931659887356" datatype="html">
         <source> Bienvenido al Chat </source>
-        <target>Welcome to Chat</target>
+        <target>Bienvenido al Chat</target>
       </trans-unit>
       <trans-unit id="228452571591050019" datatype="html">
         <source> Selecciona una conversación para comenzar a chatear o inicia una nueva conversación </source>
-        <target>Select a conversation to start chatting or start a new conversation</target>
+        <target>Selecciona una conversación para comenzar a chatear o inicia una nueva conversación</target>
       </trans-unit>
       <trans-unit id="4452828377161563646" datatype="html">
         <source>¿Estas seguro que deseas cerrar sesión?</source>
-        <target>Are you sure you want to sign out?</target>
+        <target>¿Estas seguro que deseas cerrar sesión?</target>
       </trans-unit>
       <trans-unit id="514585342108001366" datatype="html">
         <source>Si</source>
-        <target>Yes</target>
+        <target>Si</target>
       </trans-unit>
       <trans-unit id="6402951927316857780" datatype="html">
         <source>Cancelar</source>
-        <target>Cancel</target>
+        <target>Cancelar</target>
       </trans-unit>
       <trans-unit id="7832902795060702942" datatype="html">
         <source>No tienes autorización</source>
-        <target>You are not authorized</target>
+        <target>No tienes autorización</target>
       </trans-unit>
       <trans-unit id="8265219004304704743" datatype="html">
         <source>Usuario o contraseña invalido</source>
-        <target>Invalid username or password</target>
+        <target>Usuario o contraseña invalido</target>
       </trans-unit>
       <trans-unit id="7358671311475908717" datatype="html">
         <source>Error del servidor, intenta más tarde</source>
-        <target>Server error, try again later</target>
+        <target>Error del servidor, intenta más tarde</target>
       </trans-unit>
       <trans-unit id="6794645272232466037" datatype="html">
         <source>Error de conexión</source>
-        <target>Connection error</target>
+        <target>Error de conexión</target>
       </trans-unit>
       <trans-unit id="2225217625927037543" datatype="html">
         <source>Error desconocido</source>
-        <target>Unknown error</target>
+        <target>Error desconocido</target>
       </trans-unit>
       <trans-unit id="8991093828260709713" datatype="html">
         <source>Este campo es requerido</source>
-        <target>This field is required</target>
+        <target>Este campo es requerido</target>
       </trans-unit>
       <trans-unit id="5717675193406365035" datatype="html">
         <source>Debe tener al menos <x id="PH" equiv-text="error[&apos;requiredLength&apos;]"/> caracteres</source>
-        <target>Must be at least <x id="PH" equiv-text="error[&apos;requiredLength&apos;]"/> characters</target>
+        <target>Debe tener al menos <x id="PH" equiv-text="error[&apos;requiredLength&apos;]"/> caracteres</target>
       </trans-unit>
       <trans-unit id="6865259090593680692" datatype="html">
         <source>Este usuario ya existe. Por favor elige otro nombre.</source>
-        <target>This username already exists. Please choose another one.</target>
+        <target>Este usuario ya existe. Por favor elige otro nombre.</target>
       </trans-unit>
       <trans-unit id="4890209435362297245" datatype="html">
         <source>La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.</source>
-        <target>Password must contain at least one uppercase letter, one lowercase letter, one number and one special character.</target>
+        <target>La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.</target>
       </trans-unit>
     </body>
   </file>

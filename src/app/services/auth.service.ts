@@ -24,15 +24,6 @@ export class AuthService {
 
   // Computed signals
   isAuthenticated = computed(() => !!this.currentUser());
-  userInitials = computed(() => {
-    const user = this.currentUser();
-    if (!user?.name) return 'U';
-    return user.name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase();
-  });
 
   constructor() {
     this.initializeCurrentUser();
@@ -73,7 +64,7 @@ export class AuthService {
 
   /**
    * Registro de usuario
-   */
+  */
   public register(userData: any): Observable<LoginResponse> {
     this.isLoadingBtn.set(true);
 
