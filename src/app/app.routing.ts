@@ -8,25 +8,32 @@ export const routes: Routes = [
   {
     path: '',
     redirectTo: 'auth/login',
-    pathMatch: 'full',
-    title: 'JfChat'
+    pathMatch: 'full'
   },
   {
-    path: 'auth/login',
-    component: Login,
-    title: 'Login'
-  },
-  {
-    path: 'register',
-    component: Register,
-    title: 'Register'
+    path: 'auth',
+    children: [
+      {
+        path: 'login',
+        component: Login,
+        title: 'Login - JfChat'
+      },
+      {
+        path: 'register',
+        component: Register,
+        title: 'Register - JfChat'
+      }
+    ]
   },
   {
     path: 'chat',
     component: ChatLayout,
     canActivate: [authGuard],
-    title: 'Chat',
-    children: [
-    ]
+    title: 'Chat - JfChat',
+    children: []
+  },
+  {
+    path: '**',
+    redirectTo: 'auth/login'
   }
-]
+];
