@@ -1,12 +1,24 @@
-import { computed, inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { IUser } from '../../../types/user';
+import { catchError, finalize, Observable, tap, throwError } from 'rxjs';
+import { ConfigService } from '../../../services/config.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UsersService {
   private readonly authService = inject(AuthService);
+  private readonly http = inject(HttpClient);
+  private readonly configService = inject(ConfigService);
 
+  // Signals
+  isLoading = signal<boolean>(false);
+  isLoadingBtn = signal<boolean>(false);
+  error = signal<string | null>(null);
+  
+  // Computed signals
   public userInitials = computed(() => {
     const user = this.authService.currentUser();
     if (!user) return 'U';
@@ -42,4 +54,62 @@ export class UsersService {
     
     return colors[index];
   });
+
+  /**
+   * Obtener todos los usuarios
+  */
+  public getAll(): Observable<IUser[]> {
+    this.isLoadingBtn.set(true);
+
+    const url = this.configService.getApiUrl('/user');
+
+    return this.http.get<IUser[]>(url).pipe(
+      tap((response) => {
+        return response;
+      }),
+      catchError((error) => {
+        const errorMessage = this.getErrorMessage(error);
+        return throwError(() => errorMessage);
+      }),
+      finalize(() => {
+        this.isLoadingBtn.set(false);
+      })
+    );
+  }
+
+  /**
+   * Registrar usuario
+  */
+  public register(user: IUser): Observable<IUser> {
+    this.isLoadingBtn.set(true);
+
+    const url = this.configService.getApiUrl('/user');
+
+    return this.http.post<IUser>(url, user).pipe(
+      tap((response) => {
+        console.log('register response: ', response);
+        return response;
+      }),
+      catchError((error) => {
+        console.log('register error: ', error);
+        const errorMessage = this.getErrorMessage(error);
+        return throwError(() => errorMessage);
+      }),
+      finalize(() => {
+        this.isLoadingBtn.set(false);
+      })
+    );
+  }
+
+  private getErrorMessage(error: any): string {
+    if (error.status === 401) {
+      return $localize`No tienes autorización`;
+    } else if (error.status === 404) {
+      return $localize`Usuarios`;
+    } else if (error.status >= 500) {
+      return $localize`Error del servidor, intenta más tarde`;
+    } else {
+      return error.error?.message || $localize`Error de conexión`;
+    }
+  }
 }

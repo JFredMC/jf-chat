@@ -33,10 +33,4 @@ export const routes: Routes = [
     title: 'Chat - JfChat',
     children: []
   },
-  {
-    path: '**',
-    redirectTo: 'auth/login',
-    component: NotFoundComponent,
-    title: 'Página no encontrada - JfChat'
-  }
 ];

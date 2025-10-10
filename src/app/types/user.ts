@@ -1,11 +1,12 @@
 import { IAudit } from "./audit";
 
 export interface IUser extends IAudit {
-  id: number;
+  id?: number;
   username: string;
-  first_name: string;
-  last_name: string;
+  password: string;
+  first_name?: string;
+  last_name?: string;
   avatar_url?: string;
-  status: string;
-  is_active: boolean;
+  status?: string;
+  is_active?: boolean;
 }

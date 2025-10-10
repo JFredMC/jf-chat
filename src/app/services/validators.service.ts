@@ -1,5 +1,5 @@
 // validation.service.ts
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Signal, inject } from '@angular/core';
 import { EXISTING_USERS, FORM_ERRORS } from '../types/errors';
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 
@@ -12,10 +12,12 @@ export class ValidationService {
     return getError ? getError(errorValue) : $localize`Error desconocido`;
   }
 
-  public existingUserValidator(): ValidatorFn {
+  public existingUserValidator(existingUsersSignal: Signal<string[]>): ValidatorFn {
     return (control: AbstractControl): ValidationErrors | null => {
       const username = control.value?.trim();
-      if (username && EXISTING_USERS.includes(username)) {
+      const existingUsers = existingUsersSignal();
+      
+      if (username && existingUsers.includes(username)) {
         return { existingUser: true };
       }
       return null;
