@@ -1,0 +1,65 @@
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 p-4">
+  <div class="w-full max-w-md shadow-xl bg-white dark:bg-gray-800 rounded-lg overflow-hidden">
+    <div class="space-y-1 text-center p-6">
+      <div class="flex justify-center mb-4">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold">
+          JF
+        </div>
+      </div>
+      <h1 class="text-6xl font-bold text-gray-900 dark:text-white">404</h1>
+      <h2 class="text-2xl font-bold text-gray-900 dark:text-white mt-2" i18n>Página no encontrada</h2>
+      <p class="text-gray-500 dark:text-gray-400 mt-4" i18n>
+        Lo sentimos, la página que buscas no existe o ha sido movida.
+      </p>
+    </div>
+    
+    <!-- Ilustración decorativa -->
+    <div class="px-6">
+      <div class="w-32 h-32 mx-auto mb-6 text-gray-400 dark:text-gray-600">
+        <svg viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M100 180C143.183 180 178 145.183 178 102C178 58.8172 143.183 24 100 24C56.8172 24 22 58.8172 22 102C22 145.183 56.8172 180 100 180Z" stroke="currentColor" stroke-width="8"/>
+          <path d="M70 70L130 130M130 70L70 130" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+          <path d="M140 40C140 42.2091 138.209 44 136 44C133.791 44 132 42.2091 132 40C132 37.7909 133.791 36 136 36C138.209 36 140 37.7909 140 40Z" fill="currentColor"/>
+          <path d="M160 60C160 62.2091 158.209 64 156 64C153.791 64 152 62.2091 152 60C152 57.7909 153.791 56 156 56C158.209 56 160 57.7909 160 60Z" fill="currentColor"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="p-6 pt-0">
+      <div class="space-y-3">
+        <button
+          (click)="goHome()"
+          class="inline-flex w-full items-center justify-center rounded-md bg-gray-900 px-4 py-3 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors dark:bg-gray-50 dark:text-gray-900 dark:hover:bg-gray-200 dark:focus:ring-gray-400 dark:focus:ring-offset-gray-900"
+          i18n
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+          Volver al inicio
+        </button>
+        
+        <button
+          (click)="goBack()"
+          class="inline-flex w-full items-center justify-center rounded-md border border-gray-300 bg-transparent px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 transition-colors dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 dark:focus:ring-gray-400 dark:focus:ring-offset-gray-900"
+          i18n
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+          </svg>
+          Volver atrás
+        </button>
+      </div>
+      
+      <div class="mt-6 text-center text-sm">
+        <span class="text-gray-500 dark:text-gray-400" i18n>¿Necesitas ayuda?</span>
+        <a 
+          href="mailto:support@jfchat.com" 
+          class="text-blue-600 hover:underline font-medium dark:text-blue-400 ml-1"
+          i18n
+        >
+          Contactar soporte
+        </a>
+      </div>
+    </div>
+  </div>
+</div>

@@ -3,6 +3,7 @@ import { Login } from './features/auth/login/login';
 import { Register } from './features/auth/register/register';
 import { authGuard } from './cores/guards/auth.guard';
 import { ChatLayout } from './features/chat/layout/chat-layout';
+import { NotFoundComponent } from './features/errors/404/404';
 
 export const routes: Routes = [
   {
@@ -34,6 +35,8 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'auth/login'
+    redirectTo: 'auth/login',
+    component: NotFoundComponent,
+    title: 'Página no encontrada - JfChat'
   }
 ];
