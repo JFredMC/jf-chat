@@ -4,6 +4,7 @@ import { Register } from './features/auth/register/register';
 import { authGuard } from './cores/guards/auth.guard';
 import { ChatLayout } from './features/chat/layout/chat-layout';
 import { NotFoundComponent } from './features/errors/404/404';
+import { guestGuard } from './cores/guards/guest.guard';
 
 export const routes: Routes = [
   {
@@ -13,6 +14,7 @@ export const routes: Routes = [
   },
   {
     path: 'auth',
+    canActivate: [guestGuard],
     children: [
       {
         path: 'login',
