@@ -1,14 +1,16 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../services/auth.service';
 import { SweetAlertService } from '../../../services/sweet-alert.service';
 import { ThemeService } from '../../../services/theme.service';
 import { UsersService } from '../../user/services/user.service';
 import { LanguageService } from '../../../services/language.service';
+import { ChatArea } from '../chat-area/chat-area';
+import { FriendshipDialog } from '../../friendship/friendship-dialog/friendship-dialog';
 
 @Component({
   selector: 'app-chat-layout',
-  imports: [CommonModule],
+  imports: [CommonModule, ChatArea, FriendshipDialog],
   templateUrl: './chat-layout.html',
   styleUrl: './chat-layout.scss'
 })
@@ -23,6 +25,7 @@ export class ChatLayout {
   protected userInitials = this.usersService.userInitials;
   protected userAvatarColor = this.usersService.userAvatarColor;
   protected isDarkMode = computed(() => this.themeService.isDarkMode());
+  protected isContactsDialogOpen = signal(false);
   
   // Señales para los idiomas
   protected currentLanguage = this.languageService.language;
@@ -92,5 +95,29 @@ export class ChatLayout {
       return `${user.first_name} ${user.last_name}`;
     }
     return user?.username || 'Usuario';
+  }
+
+  openContactsDialog(): void {
+    this.isContactsDialogOpen.set(true);
+  }
+
+  closeContactsDialog(): void {
+    this.isContactsDialogOpen.set(false);
+  }
+
+  onFriendSelected(friendId: string): void {
+    console.log('Amigo seleccionado:', friendId);
+    this.startChatWithFriend(friendId);
+    this.closeContactsDialog();
+  }
+
+  private startChatWithFriend(friendId: string) {
+    console.log('Iniciando chat con el amigo ID:', friendId);
+    
+    // Opcional: Mostrar notificación de éxito
+    this.sweetAlertService.showAlert(
+      'Chat iniciado',
+      'La conversación ha comenzado'
+    );
   }
 }

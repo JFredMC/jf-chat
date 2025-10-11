@@ -208,19 +208,33 @@
 
     <!-- Chat Area -->
     <main class="flex-1 flex flex-col min-w-0">
-      <div class="flex-1 flex items-center justify-center p-4">
-        <div class="text-center">
-          <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 flex items-center justify-center">
-            <span class="text-2xl">💬</span>
-          </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2" i18n>
-            Bienvenido al Chat
-          </h3>
-          <p class="text-gray-500 dark:text-gray-400 max-w-sm" i18n>
-            Selecciona una conversación para comenzar a chatear o inicia una nueva conversación
-          </p>
+      <!-- Componente ChatArea -->
+      <app-chat-area class="flex-1 flex items-center justify-center p-4"></app-chat-area>
+
+      <!-- Botón flotante para contactos -->
+      <button
+        class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group"
+        (click)="openContactsDialog()"
+        [attr.aria-label]="'Seleccionar contacto'"
+      >
+        <svg class="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+        </svg>
+        
+        <!-- Tooltip -->
+        <div class="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+          Buscar contacto
+          <div class="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
         </div>
-      </div>
+      </button>
+
+      <!-- Diálogo de contactos -->
+      @if (isContactsDialogOpen()) {
+        <app-friendship-dialog
+          (friendSelected)="onFriendSelected($event)"
+          (closed)="closeContactsDialog()"
+        ></app-friendship-dialog>
+      }
     </main>
   </div>
 </div>
