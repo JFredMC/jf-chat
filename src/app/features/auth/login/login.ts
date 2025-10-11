@@ -36,6 +36,9 @@ export class Login {
     effect(() => {
       this.isLoadingBtn.set(this.authService.isLoadingBtn());
     });
+    if (this.authService.isAuthenticated()) {
+      this.router.navigate(['/chat']);
+    }
   }
 
   handleLogin(): void {

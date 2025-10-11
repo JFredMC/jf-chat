@@ -33,4 +33,9 @@ export const routes: Routes = [
     title: 'Chat - JfChat',
     children: []
   },
+  {
+    path: '**',
+    component: NotFoundComponent,
+    title: 'Página no encontrada - JfChat'
+  }
 ];
