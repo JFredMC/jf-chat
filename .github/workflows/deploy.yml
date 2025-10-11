@@ -20,7 +20,9 @@ jobs:
       - name: Build app
         run: yarn run build --configuration production --base-href /jf-chat/
 
-      
+      - name: Copy 404.html
+        run: cp dist/jf-chat/browser/index.html dist/jf-chat/browser/404.html
+
       - name: Artifact upload
         uses: actions/upload-pages-artifact@v3
         with:
