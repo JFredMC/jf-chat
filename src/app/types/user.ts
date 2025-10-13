@@ -1,3 +1,4 @@
+import { IFriendship } from "../features/friendship/types/friendship.type";
 import { IAudit } from "./audit";
 
 export interface IUser extends IAudit {
@@ -9,4 +10,6 @@ export interface IUser extends IAudit {
   avatar_url?: string;
   status?: string;
   is_active?: boolean;
+  last_seen?: string;
+  friendships?: IFriendship[];
 }

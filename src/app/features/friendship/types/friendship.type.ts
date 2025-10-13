@@ -1,11 +1,11 @@
-export interface IFriendship {
+import { IAudit } from "../../../types/audit";
+import { IUser } from "../../../types/user";
+
+export interface IFriendship extends IAudit {
   id: string;
-  name: string;
-  username: string;
-  avatar_url?: string;
+  user_id: number;
+  friend_id: number;
   status?: string;
-  initials: string;
-  avatarColor: string;
-  last_seen?: string;
-  is_online: boolean;
+  user: IUser;
+  friend: IUser;
 }

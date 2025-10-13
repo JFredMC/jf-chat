@@ -1,6 +1,6 @@
 <div 
   class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-  (click)="closed.emit('close')"
+  (click)="closed.emit()"
 >
   <!-- Diálogo -->
   <div 
@@ -22,7 +22,7 @@
       </div>
       <button
         class="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
-        (click)="closed.emit('close')"
+        (click)="closed.emit()"
         aria-label="Cerrar"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -74,33 +74,35 @@
       } @else {
         <!-- Lista de amigos -->
         <div class="space-y-2">
-          @for (friend of filteredFriends(); track friend.id) {
+          @for (friendship of filteredFriends(); track friendship.id) {
+            @let friendUser = getFriendUser(friendship);
+            @let displayName = getFriendDisplayName(friendUser);
             <button
               class="w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 group border border-transparent hover:border-gray-200 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              [class.bg-blue-50]="selectedFriendId() === friend.id"
-              [class.border-blue-200]="selectedFriendId() === friend.id"
-              [class.dark:bg-blue-900/20]="selectedFriendId() === friend.id"
-              [class.dark:border-blue-800]="selectedFriendId() === friend.id"
-              (click)="selectFriend(friend)"
+              [class.bg-blue-50]="isSelected(friendship)"
+              [class.border-blue-200]="isSelected(friendship)"
+              [class.dark:bg-blue-900/20]="isSelected(friendship)"
+              [class.dark:border-blue-800]="isSelected(friendship)"
+              (click)="selectFriend(friendship)"
             >
               <!-- Avatar -->
               <div class="relative flex-shrink-0">
                 <div 
                   class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow-lg"
-                  [class]="friend.avatar_url ? '' : friend.avatarColor"
+                  [class]="friendUser.avatar_url ? '' : getFriendAvatarColor(friendUser)"
                 >
-                  @if (friend.avatar_url) {
+                  @if (friendUser.avatar_url) {
                     <img 
-                      [src]="friend.avatar_url" 
-                      [alt]="friend.name"
+                      [src]="friendUser.avatar_url" 
+                      [alt]="displayName"
                       class="w-14 h-14 rounded-2xl object-cover"
                     >
                   } @else {
-                    {{ friend.initials }}
+                    {{ getFriendInitials(friendUser) }}
                   }
                 </div>
                 <!-- Indicador de estado en línea -->
-                @if (friend.is_online) {
+                @if (isFriendOnline(friendUser)) {
                   <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
                 } @else {
                   <div class="absolute bottom-0 right-0 w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
@@ -111,29 +113,32 @@
               <div class="flex-1 text-left min-w-0">
                 <div class="flex items-center justify-between mb-1">
                   <p class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {{ friend.name }}
+                    {{ displayName }}
                   </p>
-                  @if (!friend.is_online && friend.last_seen) {
-                    <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2" i18n>
-                      Visto {{ friend.last_seen }}
-                    </span>
+                  @if (!isFriendOnline(friendUser)) {
+                    @let lastSeen = getLastSeen(friendUser);
+                    @if (lastSeen) {
+                      <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
+                        {{ lastSeen }}
+                      </span>
+                    }
                   }
                 </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ friend.username }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ friendUser.username }}</p>
                 
                 <!-- Estado personalizado -->
-                @if (friend.status) {
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ friend.status }}</p>
+                @if (friendUser.status && friendUser.status !== 'online') {
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ friendUser.status }}</p>
                 }
               </div>
 
               <!-- Icono de selección -->
               <div 
                 class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center transition-all duration-200 flex-shrink-0"
-                [class.bg-blue-500]="selectedFriendId() === friend.id"
-                [class.border-blue-500]="selectedFriendId() === friend.id"
+                [class.bg-blue-500]="isSelected(friendship)"
+                [class.border-blue-500]="isSelected(friendship)"
               >
-                @if (selectedFriendId() === friend.id) {
+                @if (isSelected(friendship)) {
                   <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
                   </svg>
@@ -154,14 +159,14 @@
         <div class="flex space-x-3">
           <button
             class="px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-all duration-200"
-            (click)="closed.emit('close')"
+            (click)="closed.emit()"
             i18n
           >
             Cancelar
           </button>
           <button
             class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="!selectedFriendId()"
+            [disabled]="!selectedFriend()"
             (click)="confirmSelection()"
             i18n
           >

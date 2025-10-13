@@ -1,7 +1,8 @@
 import { Component, effect, inject, output, signal } from '@angular/core';
 import { IFriendship } from '../types/friendship.type';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { FriendshipService } from '../services/friendship.service';
+import { AuthService } from '../../../services/auth.service';
+import { IUser } from '../../../types/user';
 
 @Component({
   selector: 'app-friendship-dialog',
@@ -11,36 +12,52 @@ import { FriendshipService } from '../services/friendship.service';
 })
 export class FriendshipDialog {
   private readonly friendshipService = inject(FriendshipService);
-  friendSelected = output<string>();
-  closed = output<string>();
+  private readonly authService = inject(AuthService);
+
+  public friendSelected = output<{friendId: string, friendData: IUser}>();
+  public closed = output<void>();
 
   // Signals
-  public friends = toSignal(this.friendshipService.getAll(), { initialValue: [] });
+  public friends = this.friendshipService.friends;
+  public currentUser = this.authService.currentUser;
   public isLoading = this.friendshipService.isLoading;
   public isLoadingBtn = this.friendshipService.isLoadingBtn;
   public searchQuery = signal('');
-  public selectedFriendId = signal<string | null>(null);
+  public selectedFriend = signal<{friendshipId: string, friendData: IUser} | null>(null);
 
   constructor() {
-    effect(() => {
-      this.isLoading.set(this.friendshipService.isLoadingBtn());
-      this.isLoadingBtn.set(this.friendshipService.isLoadingBtn());
-    });
+    // Cargar amigos al inicializar el componente
+    this.friendshipService.getAll().subscribe();
   }
 
   public filteredFriends() {
     const query = this.searchQuery().toLowerCase();
-    if (!query) return this.friends();
+    const currentUserId = this.currentUser()?.id;
+    
+    if (!currentUserId) return [];
 
-    return this.friends().filter(friend =>
-      friend.name.toLowerCase().includes(query) ||
-      friend.username.toLowerCase().includes(query)
-    );
+    const friendships = this.friends();
+    if (!query) return friendships;
+
+    return friendships.filter(friendship => {
+      const friendUser = this.friendshipService.getFriendUser(friendship, currentUserId);
+      return (
+        friendUser.first_name?.toLowerCase().includes(query) ||
+        friendUser.last_name?.toLowerCase().includes(query) ||
+        friendUser.username.toLowerCase().includes(query)
+      );
+    });
   }
 
-  public selectFriend(friend: IFriendship) {
-    this.selectedFriendId.set(friend.id);
-    this.friendSelected.emit(friend.id);
+  public selectFriend(friendship: IFriendship) {
+    const currentUserId = this.currentUser()?.id;
+    if (!currentUserId) return;
+
+    const friendUser = this.friendshipService.getFriendUser(friendship, currentUserId);
+    this.selectedFriend.set({
+      friendshipId: friendship.id,
+      friendData: friendUser
+    });
   }
 
   public onSearchChange(event: Event) {
@@ -49,13 +66,55 @@ export class FriendshipDialog {
   }
 
   public confirmSelection() {
-    if (this.selectedFriendId()) {
-      this.friendSelected.emit(this.selectedFriendId()!);
-      this.closed.emit('close');
+    const selected = this.selectedFriend();
+    if (selected) {
+      this.friendSelected.emit({
+        friendId: selected.friendshipId,
+        friendData: selected.friendData
+      });
+      this.closed.emit();
     }
   }
 
   public stopPropagation(event: Event) {
     event.stopPropagation();
+  }
+
+  // Helper methods para el template
+  getFriendUser(friendship: IFriendship): IUser {
+    const currentUserId = this.currentUser()?.id;
+    return currentUserId ? this.friendshipService.getFriendUser(friendship, currentUserId) : friendship.friend;
+  }
+
+  getFriendDisplayName(friendUser: IUser): string {
+    if (friendUser.first_name && friendUser.last_name) {
+      return `${friendUser.first_name} ${friendUser.last_name}`;
+    }
+    return friendUser.username;
+  }
+
+  getFriendInitials(friendUser: IUser): string {
+    return this.friendshipService.getUserInitials(friendUser);
+  }
+
+  getFriendAvatarColor(friendUser: IUser): string {
+    return this.friendshipService.generateAvatarColor(friendUser.id || 0);
+  }
+
+  isFriendOnline(friendUser: IUser): boolean {
+    return friendUser.status === 'online';
+  }
+
+  getLastSeen(friendUser: IUser): string {
+    return friendUser.last_seen ? this.friendshipService.formatLastSeen(friendUser.last_seen) : '';
+  }
+
+  isSelected(friendship: IFriendship): boolean {
+    const selected = this.selectedFriend();
+    const currentUserId = this.currentUser()?.id;
+    if (!selected || !currentUserId) return false;
+
+    const friendUser = this.friendshipService.getFriendUser(friendship, currentUserId);
+    return selected.friendData.id === friendUser.id;
   }
 }

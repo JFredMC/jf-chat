@@ -231,7 +231,7 @@
       <!-- Diálogo de contactos -->
       @if (isContactsDialogOpen()) {
         <app-friendship-dialog
-          (friendSelected)="onFriendSelected($event)"
+          (friendSelected)="onFriendSelected($event.friendId)"
           (closed)="closeContactsDialog()"
         ></app-friendship-dialog>
       }
