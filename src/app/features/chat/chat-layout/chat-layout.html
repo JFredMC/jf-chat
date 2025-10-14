@@ -165,7 +165,7 @@
     </div>
   </header>
 
-  <!-- Main Content -->
+    <!-- Main Content -->
   <div class="flex-1 flex">
     <!-- Sidebar Overlay para móviles -->
     @if (isMobileMenuOpen()) {
@@ -183,27 +183,7 @@
         '-translate-x-full': !isMobileMenuOpen()
       }"
     >
-      <div class="p-4 h-full flex flex-col">
-        <!-- Header del sidebar -->
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white" i18n>Conversaciones</h2>
-          <button
-            class="md:hidden p-1 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700"
-            (click)="toggleMobileMenu()"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Lista de conversaciones -->
-        <div class="flex-1 overflow-y-auto">
-          <div class="text-center py-8 text-gray-500 dark:text-gray-400">
-            <p i18n>No hay conversaciones aún</p>
-          </div>
-        </div>
-      </div>
+      <app-conversation-list></app-conversation-list>
     </aside>
 
     <!-- Chat Area -->
@@ -212,26 +192,28 @@
       <app-chat-area class="flex-1 flex items-center justify-center p-4"></app-chat-area>
 
       <!-- Botón flotante para contactos -->
-      <button
-        class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group"
-        (click)="openContactsDialog()"
-        [attr.aria-label]="'Seleccionar contacto'"
-      >
-        <svg class="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
-        </svg>
-        
-        <!-- Tooltip -->
-        <div class="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
-          Buscar contacto
-          <div class="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
-        </div>
-      </button>
+      @if(!activeConversation()) {
+        <button
+          class="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center z-40 group"
+          (click)="openContactsDialog()"
+          [attr.aria-label]="'Seleccionar contacto'"
+        >
+          <svg class="w-6 h-6 transition-transform group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/>
+          </svg>
+          <!-- Tooltip -->
+          <div
+            class="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 dark:bg-gray-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+            Buscar contacto
+            <div class="absolute top-full right-4 -mt-1 border-4 border-transparent border-t-gray-900 dark:border-t-gray-700"></div>
+          </div>
+        </button>
+      }
 
       <!-- Diálogo de contactos -->
       @if (isContactsDialogOpen()) {
         <app-friendship-dialog
-          (friendSelected)="onFriendSelected($event.friendId)"
+          (friendSelected)="onFriendSelected($event)"
           (closed)="closeContactsDialog()"
         ></app-friendship-dialog>
       }

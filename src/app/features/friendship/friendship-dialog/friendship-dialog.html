@@ -17,7 +17,7 @@
         </div>
         <div>
           <h2 class="text-xl font-bold text-gray-900 dark:text-white" i18n>Seleccionar Contacto</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400" i18n>Elige un amigo para chatear</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400" i18n>Elige un contacto para chatear</p>
         </div>
       </div>
       <button
@@ -57,7 +57,7 @@
           <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
           <p class="text-gray-500 dark:text-gray-400" i18n>Cargando contactos...</p>
         </div>
-      } @else if (filteredFriends().length === 0) {
+      } @else if (filteredContacts().length === 0) {
         <!-- Estado vacío -->
         <div class="flex flex-col items-center justify-center py-12 text-center px-6">
           <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center mb-4">
@@ -68,41 +68,40 @@
           </div>
           <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" i18n>No se encontraron contactos</h3>
           <p class="text-gray-500 dark:text-gray-400 text-sm" i18n>
-            {{ searchQuery() ? 'Prueba con otros términos de búsqueda' : 'Añade amigos para comenzar a chatear' }}
+            {{ searchQuery() ? 'Prueba con otros términos de búsqueda' : 'Añade contactos para comenzar a chatear' }}
           </p>
         </div>
       } @else {
-        <!-- Lista de amigos -->
+        <!-- Lista de contactos -->
         <div class="space-y-2">
-          @for (friendship of filteredFriends(); track friendship.id) {
-            @let friendUser = getFriendUser(friendship);
-            @let displayName = getFriendDisplayName(friendUser);
+          @for (friendship of filteredContacts(); track friendship.id) {
+            @let displayName = getContactDisplayName(friendship.friend);
             <button
               class="w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 group border border-transparent hover:border-gray-200 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              [class.bg-blue-50]="isSelected(friendship)"
-              [class.border-blue-200]="isSelected(friendship)"
-              [class.dark:bg-blue-900/20]="isSelected(friendship)"
-              [class.dark:border-blue-800]="isSelected(friendship)"
-              (click)="selectFriend(friendship)"
+              [class.bg-blue-50]="isSelected(friendship.friend)"
+              [class.border-blue-200]="isSelected(friendship.friend)"
+              [class.dark:bg-blue-900/20]="isSelected(friendship.friend)"
+              [class.dark:border-blue-800]="isSelected(friendship.friend)"
+              (click)="selectContact(friendship.friend)"
             >
               <!-- Avatar -->
               <div class="relative flex-shrink-0">
                 <div 
                   class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow-lg"
-                  [class]="friendUser.avatar_url ? '' : getFriendAvatarColor(friendUser)"
+                  [class]="friendship.friend.avatar_url ? '' : getContactAvatarColor(friendship.friend)"
                 >
-                  @if (friendUser.avatar_url) {
+                  @if (friendship.friend.avatar_url) {
                     <img 
-                      [src]="friendUser.avatar_url" 
+                      [src]="friendship.friend.avatar_url" 
                       [alt]="displayName"
                       class="w-14 h-14 rounded-2xl object-cover"
                     >
                   } @else {
-                    {{ getFriendInitials(friendUser) }}
+                    {{ getContactInitials(friendship.friend) }}
                   }
                 </div>
                 <!-- Indicador de estado en línea -->
-                @if (isFriendOnline(friendUser)) {
+                @if (isContactOnline(friendship.friend)) {
                   <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
                 } @else {
                   <div class="absolute bottom-0 right-0 w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
@@ -115,8 +114,8 @@
                   <p class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {{ displayName }}
                   </p>
-                  @if (!isFriendOnline(friendUser)) {
-                    @let lastSeen = getLastSeen(friendUser);
+                  @if (!isContactOnline(friendship.friend)) {
+                    @let lastSeen = getLastSeen(friendship.friend);
                     @if (lastSeen) {
                       <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
                         {{ lastSeen }}
@@ -124,21 +123,21 @@
                     }
                   }
                 </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ friendUser.username }}</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ friendship.friend.username }}</p>
                 
                 <!-- Estado personalizado -->
-                @if (friendUser.status && friendUser.status !== 'online') {
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ friendUser.status }}</p>
+                @if (friendship.friend.status && friendship.friend.status !== 'online') {
+                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ friendship.friend.status }}</p>
                 }
               </div>
 
               <!-- Icono de selección -->
               <div 
                 class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center transition-all duration-200 flex-shrink-0"
-                [class.bg-blue-500]="isSelected(friendship)"
-                [class.border-blue-500]="isSelected(friendship)"
+                [class.bg-blue-500]="isSelected(friendship.friend)"
+                [class.border-blue-500]="isSelected(friendship.friend)"
               >
-                @if (isSelected(friendship)) {
+                @if (isSelected(friendship.friend)) {
                   <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
                   </svg>
@@ -154,7 +153,7 @@
     <div class="p-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30 rounded-b-2xl">
       <div class="flex justify-between items-center">
         <span class="text-sm text-gray-500 dark:text-gray-400" i18n>
-          {{ filteredFriends().length }} {{ filteredFriends().length === 1 ? 'contacto' : 'contactos' }}
+          {{ filteredContacts().length }} {{ filteredContacts().length === 1 ? 'contacto' : 'contactos' }}
         </span>
         <div class="flex space-x-3">
           <button
@@ -170,7 +169,7 @@
             (click)="confirmSelection()"
             i18n
           >
-            Seleccionar
+            Iniciar Chat
           </button>
         </div>
       </div>

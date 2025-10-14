@@ -1,0 +1,63 @@
+<!-- conversation-list.component.html -->
+<div class="h-full flex flex-col">
+  <!-- Header del sidebar -->
+  <div class="flex items-center justify-between mb-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white" i18n>Conversaciones</h2>
+  </div>
+
+  <!-- Lista de conversaciones -->
+  <div class="flex-1 overflow-y-auto">
+    @if (isLoading()) {
+      <div class="flex justify-center py-8">
+        <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    } @else if (conversations().length === 0) {
+      <div class="text-center py-8 text-gray-500 dark:text-gray-400">
+        <p i18n>No hay conversaciones aún</p>
+        <p class="text-sm mt-2" i18n>Selecciona un contacto para comenzar a chatear</p>
+      </div>
+    } @else {
+      <div class="space-y-1">
+        @for (conversation of conversations(); track conversation.id) {
+          <button
+            class="w-full flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700"
+            [class.bg-blue-50]="activeConversation()?.id === conversation.id"
+            [class.dark:bg-blue-900/20]="activeConversation()?.id === conversation.id"
+            (click)="selectConversation(conversation)"
+          >
+            <!-- Avatar de la conversación -->
+            <div class="relative flex-shrink-0">
+              <div 
+                class="w-12 h-12 rounded-xl flex items-center justify-center text-white font-semibold shadow-lg"
+                [class]="conversation.type === 'direct' ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-gradient-to-br from-green-500 to-teal-600'"
+              >
+                {{ getConversationInitials(conversation) }}
+              </div>
+              <!-- Indicador de mensajes no leídos -->
+              <!-- @if (conversation.unread_count && conversation.unread_count > 0) {
+                <div class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {{ conversation.unread_count }}
+                </div>
+              } -->
+            </div>
+
+            <!-- Información de la conversación -->
+            <div class="flex-1 text-left min-w-0">
+              <div class="flex items-center justify-between mb-1">
+                <p class="font-medium text-gray-900 dark:text-white truncate">
+                  {{ getConversationDisplayName(conversation) }}
+                </p>
+                <span class="text-xs text-gray-500 flex-shrink-0 ml-2">
+                  {{ formatLastActivity(conversation) }}
+                </span>
+              </div>
+              <p class="text-sm text-gray-500 dark:text-gray-400 truncate">
+                {{ getLastMessagePreview(conversation) }}
+              </p>
+            </div>
+          </button>
+        }
+      </div>
+    }
+  </div>
+</div>

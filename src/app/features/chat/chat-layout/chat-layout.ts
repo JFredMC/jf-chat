@@ -7,10 +7,17 @@ import { UsersService } from '../../user/services/user.service';
 import { LanguageService } from '../../../services/language.service';
 import { ChatArea } from '../chat-area/chat-area';
 import { FriendshipDialog } from '../../friendship/friendship-dialog/friendship-dialog';
+import { ChatService } from '../services/chat.service';
+import { ConversationList } from '../conversation-list/conversation-list';
+import { ConversationService } from '../conversations/services/conversation.service';
+import { FriendshipService } from '../../friendship/services/friendship.service';
+import { IConversation } from '../conversations/types/conversation.type';
+import { IUser } from '../../../types/user';
 
+// chat-layout.ts
 @Component({
   selector: 'app-chat-layout',
-  imports: [CommonModule, ChatArea, FriendshipDialog],
+  imports: [CommonModule, ChatArea, FriendshipDialog, ConversationList],
   templateUrl: './chat-layout.html',
   styleUrl: './chat-layout.scss'
 })
@@ -20,10 +27,13 @@ export class ChatLayout {
   private readonly sweetAlertService = inject(SweetAlertService);
   private readonly themeService = inject(ThemeService);
   private readonly languageService = inject(LanguageService);
+  private readonly conversationService = inject(ConversationService);
+  private readonly friendshipService = inject(FriendshipService);
 
   protected currentUser = this.authService.currentUser;
   protected userInitials = this.usersService.userInitials;
   protected userAvatarColor = this.usersService.userAvatarColor;
+  protected activeConversation = this.conversationService.activeConversation;
   protected isDarkMode = computed(() => this.themeService.isDarkMode());
   protected isContactsDialogOpen = signal(false);
   
@@ -35,6 +45,15 @@ export class ChatLayout {
   protected isProfileMenuOpen = signal(false);
   protected isSidebarOpen = signal(false);
   protected isMobileMenuOpen = signal(false);
+
+  constructor() {
+    // Cargar conversaciones al inicializar
+    this.loadConversations();
+  }
+
+  loadConversations(): void {
+    this.conversationService.getUserConversations().subscribe();
+  }
 
   toggleProfileMenu(): void {
     this.isProfileMenuOpen.update(value => !value);
@@ -105,19 +124,37 @@ export class ChatLayout {
     this.isContactsDialogOpen.set(false);
   }
 
-  onFriendSelected(friendId: string): void {
-    console.log('Amigo seleccionado:', friendId);
-    this.startChatWithFriend(friendId);
+  onFriendSelected(selected: {friendId: string, friendData: IUser}): void {
+    console.log('Amigo seleccionado:', selected);
+    this.startChatWithFriend(selected.friendData.id!);
     this.closeContactsDialog();
   }
 
-  private startChatWithFriend(friendId: string) {
+  private startChatWithFriend(friendId: number) {
     console.log('Iniciando chat con el amigo ID:', friendId);
     
-    // Opcional: Mostrar notificación de éxito
-    this.sweetAlertService.showAlert(
-      'Chat iniciado',
-      'La conversación ha comenzado'
-    );
+    this.conversationService.getOrCreateDirectConversation(friendId).subscribe({
+      next: (conversation) => {
+        console.log('Conversación creada/obtenida:', conversation);
+        this.sweetAlertService.showAlert(
+          'Chat iniciado',
+          'La conversación ha comenzado'
+        );
+      },
+      error: (error) => {
+        console.error('Error al crear conversación:', error);
+        this.sweetAlertService.showAlert(
+          'Error',
+          'No se pudo iniciar la conversación',
+          'error'
+        );
+      }
+    });
+  }
+
+  // Método para seleccionar una conversación existente
+  selectConversation(conversation: IConversation): void {
+    this.conversationService.setActiveConversation(conversation);
+    this.isMobileMenuOpen.set(false); // Cerrar menú móvil si está abierto
   }
 }

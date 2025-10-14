@@ -1,4 +1,4 @@
-import { Component, effect, inject, output, signal } from '@angular/core';
+import { Component, inject, output, signal } from '@angular/core';
 import { IFriendship } from '../types/friendship.type';
 import { FriendshipService } from '../services/friendship.service';
 import { AuthService } from '../../../services/auth.service';
@@ -18,45 +18,43 @@ export class FriendshipDialog {
   public closed = output<void>();
 
   // Signals
-  public friends = this.friendshipService.friends;
+  public friends = signal<IFriendship[]>([]);
   public currentUser = this.authService.currentUser;
   public isLoading = this.friendshipService.isLoading;
   public isLoadingBtn = this.friendshipService.isLoadingBtn;
   public searchQuery = signal('');
-  public selectedFriend = signal<{friendshipId: string, friendData: IUser} | null>(null);
+  public selectedFriend = signal<{friendshipId: string, contactData: IUser} | null>(null);
 
   constructor() {
-    // Cargar amigos al inicializar el componente
-    this.friendshipService.getAll().subscribe();
+    // Cargar contactos al inicializar el componente
+    const userId = this.currentUser()?.id;
+    if (userId) {
+      this.friendshipService.getAllByUser(userId).subscribe((response) => {
+        this.friends.set(response);
+      });
+    }
   }
 
-  public filteredFriends() {
+  public filteredContacts() {
     const query = this.searchQuery().toLowerCase();
-    const currentUserId = this.currentUser()?.id;
-    
-    if (!currentUserId) return [];
-
     const friendships = this.friends();
+    
     if (!query) return friendships;
 
-    return friendships.filter(friendship => {
-      const friendUser = this.friendshipService.getFriendUser(friendship, currentUserId);
-      return (
-        friendUser.first_name?.toLowerCase().includes(query) ||
-        friendUser.last_name?.toLowerCase().includes(query) ||
-        friendUser.username.toLowerCase().includes(query)
-      );
-    });
+    return friendships.filter((friendship) => 
+      friendship.friend.first_name?.toLowerCase().includes(query) ||
+      friendship.friend.last_name?.toLowerCase().includes(query) ||
+      friendship.friend.username.toLowerCase().includes(query)
+    );
   }
 
-  public selectFriend(friendship: IFriendship) {
-    const currentUserId = this.currentUser()?.id;
-    if (!currentUserId) return;
+  public selectContact(contact: IUser) {
+    const friendship = this.friends().find(f => f.friend.id === contact.id);
+    if (!friendship) return;
 
-    const friendUser = this.friendshipService.getFriendUser(friendship, currentUserId);
     this.selectedFriend.set({
       friendshipId: friendship.id,
-      friendData: friendUser
+      contactData: contact,
     });
   }
 
@@ -70,7 +68,7 @@ export class FriendshipDialog {
     if (selected) {
       this.friendSelected.emit({
         friendId: selected.friendshipId,
-        friendData: selected.friendData
+        friendData: selected.contactData,
       });
       this.closed.emit();
     }
@@ -80,41 +78,31 @@ export class FriendshipDialog {
     event.stopPropagation();
   }
 
-  // Helper methods para el template
-  getFriendUser(friendship: IFriendship): IUser {
-    const currentUserId = this.currentUser()?.id;
-    return currentUserId ? this.friendshipService.getFriendUser(friendship, currentUserId) : friendship.friend;
-  }
-
-  getFriendDisplayName(friendUser: IUser): string {
-    if (friendUser.first_name && friendUser.last_name) {
-      return `${friendUser.first_name} ${friendUser.last_name}`;
+  getContactDisplayName(contact: IUser): string {
+    if (contact.first_name && contact.last_name) {
+      return `${contact.first_name} ${contact.last_name}`;
     }
-    return friendUser.username;
+    return contact.username;
   }
 
-  getFriendInitials(friendUser: IUser): string {
-    return this.friendshipService.getUserInitials(friendUser);
+  getContactInitials(contact: IUser): string {
+    return this.friendshipService.getUserInitials(contact);
   }
 
-  getFriendAvatarColor(friendUser: IUser): string {
-    return this.friendshipService.generateAvatarColor(friendUser.id || 0);
+  getContactAvatarColor(contact: IUser): string {
+    return this.friendshipService.generateAvatarColor(contact.id || 0);
   }
 
-  isFriendOnline(friendUser: IUser): boolean {
-    return friendUser.status === 'online';
+  isContactOnline(contact: IUser): boolean {
+    return contact.status === 'online';
   }
 
-  getLastSeen(friendUser: IUser): string {
-    return friendUser.last_seen ? this.friendshipService.formatLastSeen(friendUser.last_seen) : '';
+  getLastSeen(contact: IUser): string {
+    return contact.last_seen ? this.friendshipService.formatLastSeen(contact.last_seen) : '';
   }
 
-  isSelected(friendship: IFriendship): boolean {
+  isSelected(contact: IUser): boolean {
     const selected = this.selectedFriend();
-    const currentUserId = this.currentUser()?.id;
-    if (!selected || !currentUserId) return false;
-
-    const friendUser = this.friendshipService.getFriendUser(friendship, currentUserId);
-    return selected.friendData.id === friendUser.id;
+    return selected ? selected.contactData.id === contact.id : false;
   }
 }

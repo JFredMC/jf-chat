@@ -2,11 +2,8 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '../../../services/config.service';
+import { ActiveChat } from '../../friendship/types/active-chat.type';
 
-export interface ActiveChat {
-  friendId: string;
-  friendName: string;
-}
 
 @Injectable({
   providedIn: 'root'

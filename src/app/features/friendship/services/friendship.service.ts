@@ -6,6 +6,7 @@ import { catchError, finalize, Observable, tap, throwError } from 'rxjs';
 import { ConfigService } from '../../../services/config.service';
 import { IUser } from '../../../types/user';
 import { ActiveChat } from '../types/active-chat.type';
+import { IConversation } from '../../chat/conversations/types/conversation.type';
 
 @Injectable({
   providedIn: 'root'
@@ -43,9 +44,32 @@ export class FriendshipService {
     );
   }
 
-  // Método auxiliar para obtener el usuario amigo (dependiendo de la relación)
-  getFriendUser(friendship: IFriendship, currentUserId: number): IUser {
-    return friendship.user_id === currentUserId ? friendship.friend : friendship.user;
+  public getAllByUser(userId: number): Observable<IFriendship[]> {
+    this.isLoading.set(true);
+    this.isLoadingBtn.set(true);
+
+    return this.http.get<IFriendship[]>(`${this.urlApi}/by-user/${userId}`).pipe(
+      tap((response) => {
+        this.friendsSignal.set(response || []);
+      }),
+      catchError((error) => {
+        const errorMessage = this.getErrorMessage(error);
+        this.error.set(errorMessage);
+        return throwError(() => errorMessage);
+      }),
+      finalize(() => {
+        this.isLoading.set(false);
+        this.isLoadingBtn.set(false);
+      })
+    );
+  }
+
+  startChatWithFriend(friendId: number): Observable<IConversation> {
+    return this.http.post<IConversation>(`${this.urlApi}/start-chat`, { friendId });
+  }
+
+  getFriendsWithConversations(userId: number): Observable<IFriendship[]> {
+    return this.http.get<IFriendship[]>(`${this.urlApi}/with-conversations/${userId}`);
   }
 
   // Generar color de avatar basado en el ID del usuario

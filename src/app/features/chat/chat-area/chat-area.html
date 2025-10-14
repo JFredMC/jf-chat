@@ -1,26 +1,215 @@
-@if (activeChat(); as chat) {
-  <div class="h-full flex flex-col">
-    <!-- Cabecera del Chat -->
-    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">{{ chat.friendName }}</h2>
+<!-- chat-area.component.html -->
+@if (activeConversation(); as conversation) {
+  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
+    <!-- Cabecera del Chat Mejorada -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <!-- Avatar de la conversación -->
+          <div class="relative">
+            @if (conversation.type === 'direct') {
+              <!-- Avatar para chat directo -->
+              @let otherMember = getOtherMember(conversation);
+              @if (otherMember) {
+                <div 
+                  class="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-semibold shadow-lg"
+                  [class]="getContactAvatarColor(otherMember)"
+                >
+                  {{ getContactInitials(otherMember) }}
+                </div>
+                <div 
+                  class="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white dark:border-gray-800"
+                  [class]="isContactOnline(otherMember) ? 'bg-green-500' : 'bg-gray-400'">
+                </div>
+              }
+            } @else {
+              <!-- Avatar para grupo -->
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold shadow-lg">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+            }
+          </div>
+          
+          <!-- Información de la conversación -->
+          <div class="flex-1">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+              {{ getConversationDisplayName(conversation) }}
+            </h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              @if (conversation.type === 'direct') {
+                @let otherMember = getOtherMember(conversation);
+                @if (otherMember) {
+                  @if (isContactOnline(otherMember)) {
+                    <span class="flex items-center">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      <span i18n>En línea</span>
+                    </span>
+                  } @else {
+                    <span i18n>Última vez {{ getLastSeen(otherMember) }}</span>
+                  }
+                }
+              } @else {
+                <span>{{ conversation.members.length || 0 }} miembros</span>
+              }
+            </p>
+          </div>
+        </div>
+
+        <!-- Acciones del chat -->
+        <div class="flex items-center space-x-2">
+          <button class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+          </button>
+          <button class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </button>
+          <button class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
     </header>
-    <!-- Área de Mensajes -->
-    <div class="flex-1 overflow-y-auto p-4">
-      <p>Aquí irán los mensajes...</p>
+
+    <!-- Área de Mensajes Mejorada -->
+    <div id="message-container" class="flex-1 overflow-y-auto p-6" #messageContainer>
+      <!-- Indicador de carga de mensajes -->
+      @if (conversationServicePublic.isLoading()) {
+        <div class="flex justify-center py-4">
+          <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      }
+
+      <!-- Lista de mensajes -->
+      @for (message of messages(); track message.id) {
+        <app-message-bubble 
+          [message]="message"
+          [isOwn]="message.sender_id === currentUser()?.id"
+          [conversation]="conversation">
+        </app-message-bubble>
+      } @empty {
+        <div class="text-center py-12">
+          <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" i18n>No hay mensajes</h3>
+          <p class="text-gray-500 dark:text-gray-400" i18n>Envía el primer mensaje para iniciar la conversación</p>
+        </div>
+      }
+
+      <!-- Indicador de escritura -->
+      @if (isTyping()) {
+        <div class="flex items-center space-x-3 text-gray-500 dark:text-gray-400">
+          @if (conversation.type === 'direct') {
+            @let otherMember = getOtherMember(conversation);
+            @if (otherMember) {
+              <div class="w-8 h-8 rounded-xl bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs font-semibold">
+                {{ getContactInitials(otherMember) }}
+              </div>
+            }
+          }
+          <div class="bg-white dark:bg-gray-700 rounded-2xl rounded-tl-none px-4 py-2 shadow-sm border border-gray-100 dark:border-gray-600">
+            <div class="flex space-x-1">
+              <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+              <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+              <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            </div>
+          </div>
+        </div>
+      }
     </div>
-    <!-- Editor de Mensajes -->
-    <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-      <p>Aquí irá el input para escribir...</p>
+
+    <!-- Editor de Mensajes Mejorado -->
+    <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
+      <!-- Archivos adjuntos -->
+      @if (attachedFiles().length > 0) {
+        <div class="flex flex-wrap gap-2 mb-4">
+          @for (file of attachedFiles(); track file.name; let i = $index) {
+            <div class="flex items-center space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-2">
+              <span class="text-sm text-gray-700 dark:text-gray-300">{{ file.name }}</span>
+              <button 
+                class="text-gray-500 hover:text-red-500"
+                (click)="removeAttachedFile(i)">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="flex items-end space-x-4">
+        <!-- Botón para adjuntar archivos -->
+        <div class="relative">
+          <input 
+            type="file" 
+            #fileInput
+            multiple
+            class="hidden"
+            (change)="onFileSelected($event)">
+          <button 
+            class="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
+            (click)="fileInput.click()">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+            </svg>
+          </button>
+        </div>
+        
+        <!-- Input de mensaje -->
+        <div class="flex-1">
+          <textarea
+            placeholder="Escribe un mensaje..."
+            rows="1"
+            class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl px-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+            [value]="messageInput()"
+            (input)="onInputChange($event)"
+            (keydown)="onKeyPress($event)"
+            #messageTextarea>
+          </textarea>
+        </div>
+
+        <!-- Botón de enviar -->
+        <button
+          class="p-3 bg-gradient-to-br from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+          [disabled]="!messageInput().trim() && attachedFiles().length === 0"
+          (click)="onSendMessage()">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 } @else {
-    <div class="text-center">
-      <div class="w-24 h-24 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900 dark:to-purple-900 flex items-center justify-center">
-        <span class="text-2xl">💬</span>
+  <!-- Estado sin conversación seleccionada -->
+  <div class="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8">
+    <div class="text-center max-w-md">
+      <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 flex items-center justify-center">
+        <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+        </svg>
       </div>
-      <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">Bienvenido al Chat</h3>
-      <p class="text-gray-500 dark:text-gray-400 max-w-sm">
-        Selecciona un contacto para comenzar a chatear.
+      <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3" i18n>Bienvenido al Chat</h3>
+      <p class="text-gray-500 dark:text-gray-400 text-lg mb-6" i18n>
+        Selecciona una conversación o inicia un nuevo chat para comenzar.
       </p>
+      <div class="text-sm text-gray-400 dark:text-gray-500 space-y-1">
+        <p i18n>💬 Mensajes en tiempo real con WebSockets</p>
+        <p i18n>📎 Comparte archivos e imágenes</p>
+        <p i18n>👥 Chats individuales y grupales</p>
+        <p i18n>🔒 Comunicación segura y privada</p>
+      </div>
     </div>
+  </div>
 }
