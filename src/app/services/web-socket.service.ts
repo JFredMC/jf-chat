@@ -11,23 +11,55 @@ export class WebsocketService {
   private readonly configService = inject(ConfigService);
   private socket: WebSocket | null = null;
   private readonly url = this.configService.getApiUrl('/chat');
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
 
   // Usamos Subject en lugar de output
   public newMessage = new Subject<IMessage>();
   public messageRead = new Subject<{messageId: number, userId: number}>();
   public userStatusChange = new Subject<{userId: number, status: string}>();
+  public connectionStatus = new Subject<boolean>();
 
   connect(userId: number): void {
-    this.socket = new WebSocket(`${this.url}?userId=${userId}`);
+    try {
+      this.socket = new WebSocket(`${this.url}?userId=${userId}`);
 
-    this.socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      this.handleIncomingMessage(data);
-    };
+      this.socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        this.handleIncomingMessage(data);
+      };
 
-    this.socket.onopen = () => {
-      console.log('WebSocket connected');
-    };
+      this.socket.onopen = () => {
+        console.log('WebSocket connected');
+        this.reconnectAttempts = 0;
+        this.connectionStatus.next(true);
+      };
+
+      this.socket.onclose = () => {
+        console.log('WebSocket disconnected');
+        this.connectionStatus.next(false);
+        this.attemptReconnect(userId);
+      };
+
+      this.socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+
+    } catch (error) {
+      console.error('Error connecting WebSocket:', error);
+    }
+  }
+
+  private attemptReconnect(userId: number): void {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(1000 * this.reconnectAttempts, 30000); // Exponential backoff max 30s
+      
+      setTimeout(() => {
+        console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+        this.connect(userId);
+      }, delay);
+    }
   }
 
   private handleIncomingMessage(data: any): void {
