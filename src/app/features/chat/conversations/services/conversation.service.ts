@@ -20,6 +20,9 @@ export class ConversationService {
   public messages = signal<IMessage[]>([]);
   public isLoading = signal<boolean>(false);
   
+  // Mapa para almacenar mensajes por conversación
+  private messagesByConversation = new Map<number, IMessage[]>();
+
   // Cargar conversaciones del usuario
   getUserConversations(): Observable<IConversation[]> {
     this.isLoading.set(true);
@@ -50,13 +53,23 @@ export class ConversationService {
   // Cargar mensajes de una conversación
   getMessages(conversationId: number): Observable<IMessage[]> {
     return this.http.get<IMessage[]>(`${this.urlApi}/obtain-messages/${conversationId}`).pipe(
-      tap(messages => this.messages.set(messages))
+      tap(messages => {
+        // Almacenar mensajes en el mapa
+        this.messagesByConversation.set(conversationId, messages);
+        // Actualizar la señal de mensajes activos
+        this.messages.set(messages);
+      })
     );
+  }
+
+  // Obtener mensajes de una conversación específica
+  getMessagesForConversation(conversationId: number): IMessage[] {
+    return this.messagesByConversation.get(conversationId) || [];
   }
 
   // Enviar mensaje
   sendMessage(conversationId: number, data: IMessage): Observable<IMessage> {
-    return this.http.post<IMessage>(`${this.urlApi}/create-message/${conversationId}`, data );
+    return this.http.post<IMessage>(`${this.urlApi}/create-message/${conversationId}`, data);
   }
 
   // Establecer conversación activa
@@ -67,5 +80,50 @@ export class ConversationService {
     } else {
       this.messages.set([]);
     }
+  }
+
+  // Actualizar una conversación en la lista
+  updateConversation(updatedConversation: IConversation): void {
+    this.conversations.update(conversations => 
+      conversations.map(conv => 
+        conv.id === updatedConversation.id ? updatedConversation : conv
+      )
+    );
+  }
+
+  // Añadir mensaje a una conversación y actualizar last_message_at
+  addMessageToConversation(conversationId: number, message: IMessage): void {
+    // Actualizar mensajes de la conversación activa
+    if (this.activeConversation()?.id === conversationId) {
+      this.messages.update(messages => [...messages, message]);
+    }
+
+    // Actualizar mensajes en el mapa
+    const currentMessages = this.messagesByConversation.get(conversationId) || [];
+    this.messagesByConversation.set(conversationId, [...currentMessages, message]);
+
+    // Actualizar la conversación en la lista
+    this.conversations.update(conversations => 
+      conversations.map(conv => {
+        if (conv.id === conversationId) {
+          return {
+            ...conv,
+            last_message_at: message.created_at || new Date().toISOString()
+          };
+        }
+        return conv;
+      })
+    );
+  }
+
+  // Mover conversación al principio de la lista
+  moveConversationToTop(conversationId: number): void {
+    this.conversations.update(conversations => {
+      const conversation = conversations.find(c => c.id === conversationId);
+      if (!conversation) return conversations;
+
+      const filtered = conversations.filter(c => c.id !== conversationId);
+      return [conversation, ...filtered];
+    });
   }
 }

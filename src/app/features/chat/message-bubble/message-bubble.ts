@@ -14,23 +14,20 @@ export class MessageBubble {
   private readonly authService = inject(AuthService);
   private readonly friendshipService = inject(FriendshipService);
 
-  message = input.required<IMessage>();
-  isOwn = input.required<boolean>();
-  conversation = input<IConversation>();
+  public message = input.required<IMessage>();
+  public isOwn = input.required<boolean>();
+  public conversation = input<IConversation>();
 
-  // Obtener el usuario actual
-  get currentUser(): IUser | null {
+  private get currentUser(): IUser | null {
     return this.authService.currentUser();
   }
 
-  // Obtener el remitente del mensaje
-  getMessageSender(): IUser | null {
+  public getMessageSender(): IUser | null {
     const message = this.message();
     if (message.sender) {
       return message.sender;
     }
     
-    // Si no viene el sender completo, buscar en los miembros de la conversación
     const conversation = this.conversation();
     if (conversation?.members && message.sender_id) {
       const member = conversation.members.find(m => m.user_id === message.sender_id);
@@ -40,8 +37,7 @@ export class MessageBubble {
     return null;
   }
 
-  // Obtener iniciales del remitente
-  getSenderInitials(): string {
+  public getSenderInitials(): string {
     const sender = this.getMessageSender();
     if (sender) {
       return this.friendshipService.getUserInitials(sender);
@@ -49,8 +45,7 @@ export class MessageBubble {
     return '?';
   }
 
-  // Obtener color del avatar del remitente
-  getSenderAvatarColor(): string {
+  public getSenderAvatarColor(): string {
     const sender = this.getMessageSender();
     if (sender) {
       return this.friendshipService.generateAvatarColor(sender.id || 0);
@@ -58,30 +53,26 @@ export class MessageBubble {
     return 'bg-gray-500';
   }
 
-  // Obtener iniciales del usuario actual
-  getUserInitials(): string {
+  public getUserInitials(): string {
     if (this.currentUser) {
       return this.friendshipService.getUserInitials(this.currentUser);
     }
     return 'U';
   }
 
-  // Obtener color del avatar del usuario actual
-  getUserAvatarColor(): string {
+  public getUserAvatarColor(): string {
     if (this.currentUser) {
       return this.friendshipService.generateAvatarColor(this.currentUser.id || 0);
     }
     return 'bg-blue-500';
   }
 
-  // Verificar si el mensaje tiene contenido
-  hasContent(): boolean {
+  public hasContent(): boolean {
     const message = this.message();
     return !!message.content && message.content.trim().length > 0;
   }
 
-  // Formatear la fecha del mensaje
-  formatMessageTime(): string {
+  public formatMessageTime(): string {
     const message = this.message();
     if (!message.created_at) return '';
     
@@ -92,32 +83,29 @@ export class MessageBubble {
     });
   }
 
-  // Verificar si es un mensaje de sistema
-  isSystemMessage(): boolean {
+  public isSystemMessage(): boolean {
     return this.message().message_type === 'system';
   }
 
-  // Verificar si es un mensaje de archivo
-  isFileMessage(): boolean {
+  public isFileMessage(): boolean {
     return this.message().message_type === 'file';
   }
 
-  // Verificar si es un mensaje de imagen
-  isImageMessage(): boolean {
+  public isImageMessage(): boolean {
     return this.message().message_type === 'image';
   }
 
-  hasDeliveredStatus(): boolean {
+  public hasDeliveredStatus(): boolean {
     const statuses = this.message()?.statuses;
     return Array.isArray(statuses) && statuses.some(s => s?.status === 'delivered');
   }
 
-  hasReadStatus(): boolean {
+  public hasReadStatus(): boolean {
     const statuses = this.message()?.statuses;
     return Array.isArray(statuses) && statuses.some(s => s?.status === 'read');
   }
 
-  hasOnlySentStatus(): boolean {
+  public hasOnlySentStatus(): boolean {
     const statuses = this.message()?.statuses;
     return !Array.isArray(statuses) || statuses.every(s => s?.status === 'sent');
   }

@@ -1,8 +1,7 @@
-<!-- chat-area.component.html -->
 @if (activeConversation(); as conversation) {
-  <div class="h-full flex flex-col bg-gray-50 dark:bg-gray-900">
-    <!-- Cabecera del Chat Mejorada -->
-    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+  <div class="h-full flex flex-col min-h-0 bg-gray-50 dark:bg-gray-900">
+    <!-- Cabecera -->
+    <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex-shrink-0">
       <div class="flex items-center justify-between">
         <div class="flex items-center space-x-4">
           <!-- Avatar de la conversación -->
@@ -78,8 +77,12 @@
       </div>
     </header>
 
-    <!-- Área de Mensajes Mejorada -->
-    <div id="message-container" class="flex-1 overflow-y-auto p-6" #messageContainer>
+    <!-- Área de Mensajes -->
+    <div
+      id="message-container"
+      class="flex-1 overflow-y-auto min-h-0 p-6"
+      #messageContainer
+    >
       <!-- Indicador de carga de mensajes -->
       @if (conversationServicePublic.isLoading()) {
         <div class="flex justify-center py-4">
@@ -129,8 +132,7 @@
     </div>
 
     <!-- Editor de Mensajes Mejorado -->
-    <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
-      <!-- Archivos adjuntos -->
+    <div class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6 flex-shrink-0">
       @if (attachedFiles().length > 0) {
         <div class="flex flex-wrap gap-2 mb-4">
           @for (file of attachedFiles(); track file.name; let i = $index) {
@@ -193,7 +195,7 @@
   </div>
 } @else {
   <!-- Estado sin conversación seleccionada -->
-  <div class="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900 p-8">
+  <div class="h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 p-8 min-h-0">
     <div class="text-center max-w-md">
       <div class="w-24 h-24 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/20 dark:to-purple-900/20 flex items-center justify-center">
         <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

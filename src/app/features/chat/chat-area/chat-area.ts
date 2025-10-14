@@ -1,5 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
-import { ChatService } from '../services/chat.service';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { FriendshipService } from '../../friendship/services/friendship.service';
 import { IUser } from '../../../types/user';
@@ -10,6 +9,7 @@ import { IConversation } from '../conversations/types/conversation.type';
 import { MessageBubble } from '../message-bubble/message-bubble';
 import { EMessageType } from '../messages/enum/message-type.enum';
 
+// chat-area.ts
 @Component({
   selector: 'app-chat-area',
   templateUrl: './chat-area.html',
@@ -21,6 +21,7 @@ export class ChatArea {
   private readonly websocketService = inject(WebsocketService);
   private readonly authService = inject(AuthService);
   private readonly friendshipService = inject(FriendshipService);
+  private readonly destroyRef = inject(DestroyRef);
 
   // Exponer el servicio como público para el template
   public conversationServicePublic = this.conversationService;
@@ -32,37 +33,99 @@ export class ChatArea {
   public attachedFiles = signal<File[]>([]);
 
   constructor() {
+    this.setupWebSocketListeners();
+  }
+
+  private setupWebSocketListeners(): void {
     // Suscribirse a nuevos mensajes via WebSocket
-    this.websocketService.newMessage.subscribe((message: IMessage) => {
-      if (message.conversation_id === this.activeConversation()?.id) {
-        this.messages.update(messages => [...messages, message]);
-      }
+    const newMessageSub = this.websocketService.newMessage.subscribe((message: IMessage) => {
+      this.handleNewMessage(message);
     });
 
     // Suscribirse a cambios de estado de usuarios
-    this.websocketService.userStatusChange.subscribe((data) => {
-      // Actualizar estado de usuarios en la conversación
+    const userStatusSub = this.websocketService.userStatusChange.subscribe((data) => {
       this.updateUserStatus(data.userId, data.status);
+    });
+
+    // Limpiar suscripciones cuando el componente se destruya
+    this.destroyRef.onDestroy(() => {
+      newMessageSub.unsubscribe();
+      userStatusSub.unsubscribe();
     });
   }
 
-  // Cargar mensajes de la conversación
-  loadMessages(conversationId: number): void {
-    this.conversationService.getMessages(conversationId).subscribe({
-      next: () => {
-        this.scrollToBottom();
-        this.markMessagesAsRead();
-      },
-      error: (error) => {
-        console.error('Error al cargar mensajes:', error);
+  private handleNewMessage(message: IMessage): void {
+    const activeConv = this.activeConversation();
+    
+    // Si el mensaje es para la conversación activa, añadirlo
+    if (activeConv && message.conversation_id === activeConv.id) {
+      this.conversationService.addMessageToConversation(activeConv.id!, message);
+      this.scrollToBottom();
+      this.markMessagesAsRead();
+    }
+    
+    // Actualizar la conversación en la lista (mover al top y actualizar last_message_at)
+    this.conversationService.moveConversationToTop(message.conversation_id!);
+  }
+
+  // Enviar mensaje con soporte para archivos
+  async onSendMessage(): Promise<void> {
+    const message = this.messageInput().trim();
+    const conversation = this.activeConversation();
+    
+    if ((message || this.attachedFiles().length > 0) && conversation) {
+      try {
+        // Si hay archivos, subirlos primero
+        let attachmentUrls: string[] = [];
+        if (this.attachedFiles().length > 0) {
+          attachmentUrls = await this.uploadFiles(this.attachedFiles());
+        }
+
+        const sendMessageData: IMessage = {
+          conversation_id: conversation.id,
+          sender_id: this.currentUser()?.id,
+          content: message,
+          message_type: this.attachedFiles().length > 0 ? EMessageType.file : EMessageType.text,
+        };
+
+        // Enviar mensaje via HTTP
+        this.conversationService.sendMessage(
+          conversation.id!, 
+          sendMessageData
+        ).subscribe({
+          next: (newMessage) => {
+            // El WebSocket se encargará de añadirlo a la lista cuando llegue
+            this.messageInput.set('');
+            this.attachedFiles.set([]);
+            
+            // Opcional: Añadir mensaje localmente inmediatamente para mejor UX
+            this.addMessageLocally(newMessage);
+          },
+          error: (error) => {
+            console.error('Error al enviar mensaje:', error);
+          }
+        });
+
+      } catch (error) {
+        console.error('Error al enviar mensaje:', error);
       }
-    });
+    }
+  }
+
+  // Añadir mensaje localmente para mejor UX (sin esperar WebSocket)
+  private addMessageLocally(message: IMessage): void {
+    const conversation = this.activeConversation();
+    if (conversation && conversation.id === message.conversation_id) {
+      this.conversationService.addMessageToConversation(conversation.id!, message);
+      this.conversationService.moveConversationToTop(conversation.id!);
+      this.scrollToBottom();
+    }
   }
 
   // Scroll al final de los mensajes
   scrollToBottom(): void {
     setTimeout(() => {
-      const messageContainer = document.querySelector('#message-container');
+      const messageContainer = document.getElementById('message-container');
       if (messageContainer) {
         messageContainer.scrollTop = messageContainer.scrollHeight;
       }
@@ -95,7 +158,7 @@ export class ChatArea {
     }
   }
 
-  // Obtener el otro miembro en una conversación directa
+  // Resto de los métodos permanecen igual...
   getOtherMember(conversation: IConversation): IUser | null {
     if (conversation.type === 'direct' && conversation.members) {
       const currentUserId = this.currentUser()?.id;
@@ -105,7 +168,6 @@ export class ChatArea {
     return null;
   }
 
-  // Obtener el nombre para mostrar de la conversación
   getConversationDisplayName(conversation: IConversation): string {
     if (conversation.type === 'direct') {
       const otherMember = this.getOtherMember(conversation);
@@ -115,47 +177,6 @@ export class ChatArea {
       return 'Usuario desconocido';
     } else {
       return conversation.name || 'Grupo sin nombre';
-    }
-  }
-
-  // Enviar mensaje con soporte para archivos
-  async onSendMessage(): Promise<void> {
-    const message = this.messageInput().trim();
-    const conversation = this.activeConversation();
-    
-    if ((message || this.attachedFiles().length > 0) && conversation) {
-      try {
-        // Si hay archivos, subirlos primero
-        let attachmentUrls: string[] = [];
-        if (this.attachedFiles().length > 0) {
-          attachmentUrls = await this.uploadFiles(this.attachedFiles());
-        }
-
-        const sendMessageData: IMessage = {
-          conversation_id: conversation.id,
-          sender_id: this.currentUser()?.id,
-          content: message,
-          message_type: this.attachedFiles().length > 0 ? EMessageType.file : EMessageType.text,
-        }
-
-        // Enviar mensaje
-        this.conversationService.sendMessage(
-          conversation.id!, 
-          sendMessageData
-        ).subscribe({
-          next: (newMessage) => {
-            // El WebSocket se encargará de añadirlo a la lista
-            this.messageInput.set('');
-            this.attachedFiles.set([]);
-          },
-          error: (error) => {
-            console.error('Error al enviar mensaje:', error);
-          }
-        });
-
-      } catch (error) {
-        console.error('Error al enviar mensaje:', error);
-      }
     }
   }
 
