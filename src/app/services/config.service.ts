@@ -24,9 +24,9 @@ export class ConfigService {
     const host = url.host;
     
     if (this.isProduction()) {
-      return `wss://${host}`;
+      return `wss://${host}/chat`;
     } else {
-      return `ws://${host}`;
+      return `ws://${host}/chat`;
     }
   }
 }
