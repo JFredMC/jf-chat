@@ -31,7 +31,6 @@ export class WebsocketService {
 
   private initializeSocket(): void {
     const wsUrl = this.configService.getWebSocketUrl();
-    console.log('Connecting to WebSocket:', wsUrl);
 
     this.socket = io(wsUrl, {
       path: '/socket.io',
@@ -64,12 +63,6 @@ export class WebsocketService {
       console.error('Socket.io connection error:', error);
       this.isConnected = false;
       this.connectionStatus.next(false);
-      
-      // Mostrar error específico para Vercel
-      if (this.configService.isProduction()) {
-        console.error('⚠️  Vercel no soporta WebSockets persistentes.');
-        console.error('⚠️  Migra tu backend a Railway, Render o Heroku.');
-      }
     });
 
     // Eventos de aplicación
