@@ -1,6 +1,9 @@
+// websocket.service.ts
 import { Injectable, inject } from '@angular/core';
+import { io, Socket } from 'socket.io-client';
 import { Subject } from 'rxjs';
 import { ConfigService } from './config.service';
+import { ClientToServerEvents, ServerToClientEvents } from '../types/web-socket.type';
 import { IMessage } from '../features/chat/messages/types/message.type';
 
 
@@ -9,89 +12,158 @@ import { IMessage } from '../features/chat/messages/types/message.type';
 })
 export class WebsocketService {
   private readonly configService = inject(ConfigService);
-  private socket: WebSocket | null = null;
+  private socket!: Socket<ServerToClientEvents, ClientToServerEvents>;
   private readonly url = this.configService.getApiUrl('/chat');
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private isConnected = false;
 
-  // Usamos Subject en lugar de output
+  // Subjects para notificar a los componentes
   public newMessage = new Subject<IMessage>();
   public messageRead = new Subject<{messageId: number, userId: number}>();
   public userStatusChange = new Subject<{userId: number, status: string}>();
   public connectionStatus = new Subject<boolean>();
+  public userJoined = new Subject<{clientId: string; userId?: number}>();
+  public userLeft = new Subject<{clientId: string; userId?: number}>();
 
-  connect(userId: number): void {
-    try {
-      this.socket = new WebSocket(`${this.url}?userId=${userId}`);
-
-      this.socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        this.handleIncomingMessage(data);
-      };
-
-      this.socket.onopen = () => {
-        console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.connectionStatus.next(true);
-      };
-
-      this.socket.onclose = () => {
-        console.log('WebSocket disconnected');
-        this.connectionStatus.next(false);
-        this.attemptReconnect(userId);
-      };
-
-      this.socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-    } catch (error) {
-      console.error('Error connecting WebSocket:', error);
-    }
+  constructor() {
+    this.initializeSocket();
   }
 
-  private attemptReconnect(userId: number): void {
+  private initializeSocket(): void {
+    this.socket = io(this.url, {
+      transports: ['websocket', 'polling'],
+      autoConnect: false
+    });
+
+    this.setupEventListeners();
+  }
+
+  private setupEventListeners(): void {
+    // Eventos de conexión
+    this.socket.on('connect', () => {
+      console.log('Socket.io connected:', this.socket.id);
+      this.isConnected = true;
+      this.reconnectAttempts = 0;
+      this.connectionStatus.next(true);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('Socket.io disconnected:', reason);
+      this.isConnected = false;
+      this.connectionStatus.next(false);
+      this.attemptReconnect();
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Socket.io connection error:', error);
+      this.isConnected = false;
+      this.connectionStatus.next(false);
+    });
+
+    // Eventos de aplicación
+    this.socket.on('new_message', (message: IMessage) => {
+      console.log('New message received:', message);
+      this.newMessage.next(message);
+    });
+
+    this.socket.on('message_read', (data: { messageId: number; userId: number }) => {
+      this.messageRead.next(data);
+    });
+
+    this.socket.on('user_status', (data: { userId: number; status: string }) => {
+      this.userStatusChange.next(data);
+    });
+
+    this.socket.on('user_joined', (data: { clientId: string; userId?: number }) => {
+      this.userJoined.next(data);
+    });
+
+    this.socket.on('user_left', (data: { clientId: string; userId?: number }) => {
+      this.userLeft.next(data);
+    });
+
+    this.socket.on('message_delivered', (data: { status: string; timestamp: Date }) => {
+      console.log('Message delivered:', data);
+    });
+  }
+
+  // Conectar con autenticación
+  connect(userId: number, token: string): void {
+    if (this.isConnected) return;
+
+    this.socket.auth = { userId, token };
+    this.socket.connect();
+  }
+
+  // Desconectar
+  disconnect(): void {
+    this.socket.disconnect();
+  }
+
+  private attemptReconnect(): void {
     if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      const delay = Math.min(1000 * this.reconnectAttempts, 30000); // Exponential backoff max 30s
+      const delay = Math.min(1000 * this.reconnectAttempts, 30000);
       
       setTimeout(() => {
         console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-        this.connect(userId);
+        this.socket.connect();
       }, delay);
     }
   }
 
-  private handleIncomingMessage(data: any): void {
-    switch (data.type) {
-      case 'new_message':
-        this.newMessage.next(data.message);
-        break;
-      case 'message_read':
-        this.messageRead.next(data);
-        break;
-      case 'user_status':
-        this.userStatusChange.next(data);
-        break;
-    }
-  }
-
+  // Enviar mensaje
   sendMessage(message: IMessage): void {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({
-        type: 'send_message',
-        message
-      }));
+    if (this.isConnected) {
+      this.socket.emit('send_message', message);
+    } else {
+      console.error('Socket not connected');
     }
   }
 
+  // Marcar como leído
   markAsRead(messageId: number, userId: number): void {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify({
-        type: 'mark_read',
-        messageId,
-        userId
-      }));
+    if (this.isConnected) {
+      this.socket.emit('mark_read', { messageId, userId });
     }
+  }
+
+  // Unirse a una conversación
+  joinConversation(conversationId: number): void {
+    if (this.isConnected) {
+      this.socket.emit('join_conversation', conversationId);
+    }
+  }
+
+  // Salir de una conversación
+  leaveConversation(conversationId: number): void {
+    if (this.isConnected) {
+      this.socket.emit('leave_conversation', conversationId);
+    }
+  }
+
+  // Indicar que está escribiendo
+  startTyping(conversationId: number, userId: number): void {
+    if (this.isConnected) {
+      this.socket.emit('typing_start', { conversationId, userId });
+    }
+  }
+
+  // Indicar que dejó de escribir
+  stopTyping(conversationId: number, userId: number): void {
+    if (this.isConnected) {
+      this.socket.emit('typing_stop', { conversationId, userId });
+    }
+  }
+
+  // Obtener estado de conexión
+  getConnectionStatus(): boolean {
+    return this.isConnected;
+  }
+
+  // Obtener ID del socket
+  getSocketId(): string {
+    return this.socket.id || '';
   }
 }

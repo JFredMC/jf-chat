@@ -263,9 +263,9 @@ export class AuthService {
     return this.error();
   }
 
-  clearError(): void {
+  public getToken(): string | null {
+    return localStorage.getItem('jfchat_token');
   }
-
   // Método para debug (opcional)
   public getCurrentConfig(): { baseUrl: string; production: boolean } {
     return {

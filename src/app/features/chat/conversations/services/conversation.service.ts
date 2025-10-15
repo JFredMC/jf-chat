@@ -5,7 +5,6 @@ import { IConversation } from "../types/conversation.type";
 import { IMessage } from "../../messages/types/message.type";
 import { finalize, Observable, tap } from "rxjs";
 
-// conversation.service.ts
 @Injectable({
   providedIn: 'root'
 })
@@ -50,7 +49,7 @@ export class ConversationService {
     );
   }
 
-  // Cargar mensajes de una conversación
+  // Cargar mensajes de una conversación (solo para carga inicial)
   getMessages(conversationId: number): Observable<IMessage[]> {
     return this.http.get<IMessage[]>(`${this.urlApi}/obtain-messages/${conversationId}`).pipe(
       tap(messages => {
@@ -67,10 +66,7 @@ export class ConversationService {
     return this.messagesByConversation.get(conversationId) || [];
   }
 
-  // Enviar mensaje
-  sendMessage(conversationId: number, data: IMessage): Observable<IMessage> {
-    return this.http.post<IMessage>(`${this.urlApi}/create-message/${conversationId}`, data);
-  }
+  // NOTA: EL MÉTODO sendMessage HTTP SE ELIMINA - ahora se usa WebSocket
 
   // Establecer conversación activa
   setActiveConversation(conversation: IConversation | null): void {

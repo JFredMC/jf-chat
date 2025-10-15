@@ -33,11 +33,23 @@ export class ChatArea {
   public attachedFiles = signal<File[]>([]);
 
   constructor() {
+    this.setupWebSocketConnection();
+  }
+
+  private setupWebSocketConnection(): void {
+    const userId = this.currentUser()?.id;
+    const token = this.authService.getToken();
+    console.log('Setting up WebSocket connection with userId:', userId, 'and token:', token);
+
+    if (userId && token) {
+      this.websocketService.connect(userId, token);
+    }
+
     this.setupWebSocketListeners();
   }
 
   private setupWebSocketListeners(): void {
-    // Suscribirse a nuevos mensajes via WebSocket
+    // Suscribirse a nuevos mensajes
     const newMessageSub = this.websocketService.newMessage.subscribe((message: IMessage) => {
       this.handleNewMessage(message);
     });
@@ -47,11 +59,37 @@ export class ChatArea {
       this.updateUserStatus(data.userId, data.status);
     });
 
-    // Limpiar suscripciones cuando el componente se destruya
+    // Suscribirse a usuarios uniéndose/saliendo
+    const userJoinedSub = this.websocketService.userJoined.subscribe((data) => {
+      console.log('User joined:', data);
+    });
+
+    const userLeftSub = this.websocketService.userLeft.subscribe((data) => {
+      console.log('User left:', data);
+    });
+
+    // Suscribirse a errores de conexión
+    const connectionStatusSub = this.websocketService.connectionStatus.subscribe((isConnected) => {
+      if (!isConnected) {
+        console.warn('WebSocket disconnected');
+      }
+    });
+
+    // Limpiar suscripciones
     this.destroyRef.onDestroy(() => {
       newMessageSub.unsubscribe();
       userStatusSub.unsubscribe();
+      userJoinedSub.unsubscribe();
+      userLeftSub.unsubscribe();
+      connectionStatusSub.unsubscribe();
     });
+  }
+
+  // Cuando se selecciona una conversación
+  onConversationSelected(conversation: IConversation): void {
+    if (conversation.id) {
+      this.websocketService.joinConversation(conversation.id);
+    }
   }
 
   private handleNewMessage(message: IMessage): void {
@@ -68,7 +106,7 @@ export class ChatArea {
     this.conversationService.moveConversationToTop(message.conversation_id!);
   }
 
-  // Enviar mensaje con soporte para archivos
+  // Enviar mensaje con soporte para archivos - AHORA SOLO POR WEBSOCKET
   async onSendMessage(): Promise<void> {
     const message = this.messageInput().trim();
     const conversation = this.activeConversation();
@@ -86,39 +124,24 @@ export class ChatArea {
           sender_id: this.currentUser()?.id,
           content: message,
           message_type: this.attachedFiles().length > 0 ? EMessageType.file : EMessageType.text,
+          // Si tienes campo para attachments, agrégalo aquí
+          // attachments: attachmentUrls
         };
 
-        // Enviar mensaje via HTTP
-        this.conversationService.sendMessage(
-          conversation.id!, 
-          sendMessageData
-        ).subscribe({
-          next: (newMessage) => {
-            // El WebSocket se encargará de añadirlo a la lista cuando llegue
-            this.messageInput.set('');
-            this.attachedFiles.set([]);
-            
-            // Opcional: Añadir mensaje localmente inmediatamente para mejor UX
-            this.addMessageLocally(newMessage);
-          },
-          error: (error) => {
-            console.error('Error al enviar mensaje:', error);
-          }
-        });
+        // Enviar mensaje SOLO por WebSocket - el backend se encarga de guardar en BD
+        this.websocketService.sendMessage(sendMessageData);
+
+        // Limpiar el input y archivos inmediatamente para mejor UX
+        this.messageInput.set('');
+        this.attachedFiles.set([]);
+
+        // NOTA: El mensaje se añadirá automáticamente cuando llegue del servidor
+        // via WebSocket, por lo que NO necesitamos añadirlo localmente
 
       } catch (error) {
         console.error('Error al enviar mensaje:', error);
+        // Aquí podrías mostrar un mensaje de error al usuario
       }
-    }
-  }
-
-  // Añadir mensaje localmente para mejor UX (sin esperar WebSocket)
-  private addMessageLocally(message: IMessage): void {
-    const conversation = this.activeConversation();
-    if (conversation && conversation.id === message.conversation_id) {
-      this.conversationService.addMessageToConversation(conversation.id!, message);
-      this.conversationService.moveConversationToTop(conversation.id!);
-      this.scrollToBottom();
     }
   }
 
@@ -187,8 +210,10 @@ export class ChatArea {
   }
 
   private uploadFile(file: File): Promise<string> {
-    // Implementar subida de archivos
-    return Promise.resolve(`/uploads/${file.name}`);
+    // TODO: Implementar subida real de archivos
+    // Por ahora retornamos una URL temporal
+    console.log('Subiendo archivo:', file.name);
+    return Promise.resolve(`/uploads/${Date.now()}_${file.name}`);
   }
 
   // Manejar archivos adjuntos
