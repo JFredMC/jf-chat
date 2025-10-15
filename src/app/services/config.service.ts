@@ -18,4 +18,15 @@ export class ConfigService {
   public isProduction(): boolean {
     return environment.production;
   }
+
+  public getWebSocketUrl(): string {
+    const url = new URL(this.baseUrl);
+    const host = url.host;
+    
+    if (this.isProduction()) {
+      return `wss://${host}`;
+    } else {
+      return `ws://${host}`;
+    }
+  }
 }

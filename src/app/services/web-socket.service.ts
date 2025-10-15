@@ -13,7 +13,6 @@ import { IMessage } from '../features/chat/messages/types/message.type';
 export class WebsocketService {
   private readonly configService = inject(ConfigService);
   private socket!: Socket<ServerToClientEvents, ClientToServerEvents>;
-  private readonly url = this.configService.getApiUrl('/chat');
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private isConnected = false;
@@ -31,9 +30,15 @@ export class WebsocketService {
   }
 
   private initializeSocket(): void {
-    this.socket = io(this.url, {
+    const wsUrl = this.configService.getWebSocketUrl();
+    console.log('Connecting to WebSocket:', wsUrl);
+
+    this.socket = io(wsUrl, {
+      path: '/socket.io',
       transports: ['websocket', 'polling'],
-      autoConnect: false
+      autoConnect: false,
+      secure: this.configService.isProduction(),
+      withCredentials: true
     });
 
     this.setupEventListeners();
@@ -59,6 +64,12 @@ export class WebsocketService {
       console.error('Socket.io connection error:', error);
       this.isConnected = false;
       this.connectionStatus.next(false);
+      
+      // Mostrar error específico para Vercel
+      if (this.configService.isProduction()) {
+        console.error('⚠️  Vercel no soporta WebSockets persistentes.');
+        console.error('⚠️  Migra tu backend a Railway, Render o Heroku.');
+      }
     });
 
     // Eventos de aplicación
@@ -90,8 +101,12 @@ export class WebsocketService {
 
   // Conectar con autenticación
   connect(userId: number, token: string): void {
-    if (this.isConnected) return;
+    if (this.isConnected) {
+      console.log('Socket already connected');
+      return;
+    }
 
+    console.log('Connecting WebSocket with userId:', userId);
     this.socket.auth = { userId, token };
     this.socket.connect();
   }
