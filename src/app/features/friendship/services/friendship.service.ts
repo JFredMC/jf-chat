@@ -1,4 +1,4 @@
-// chat.service.ts
+// friendship.service.ts
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { IFriendship } from '../types/friendship.type';
@@ -70,6 +70,23 @@ export class FriendshipService {
 
   getFriendsWithConversations(userId: number): Observable<IFriendship[]> {
     return this.http.get<IFriendship[]>(`${this.urlApi}/with-conversations/${userId}`);
+  }
+
+  sendFriendRequest(friendId: number): Observable<IFriendship> {
+    this.isLoadingBtn.set(true);
+    return this.http.post<IFriendship>(`${this.urlApi}/request`, { friendId }).pipe(
+      tap((newFriendship) => {
+        this.friendsSignal.set([...this.friendsSignal(), newFriendship]);
+      }),
+      catchError((error) => {
+        const errorMessage = this.getErrorMessage(error);
+        this.error.set(errorMessage);
+        return throwError(() => errorMessage);
+      }),
+      finalize(() => {
+        this.isLoadingBtn.set(false);
+      })
+    );
   }
 
   // Generar color de avatar basado en el ID del usuario

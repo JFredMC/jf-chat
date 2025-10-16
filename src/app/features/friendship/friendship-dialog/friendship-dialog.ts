@@ -3,30 +3,39 @@ import { IFriendship } from '../types/friendship.type';
 import { FriendshipService } from '../services/friendship.service';
 import { AuthService } from '../../../services/auth.service';
 import { IUser } from '../../../types/user';
+import { CommonModule } from '@angular/common';
+import { UsersService } from '../../user/services/user.service';
 
 @Component({
   selector: 'app-friendship-dialog',
-  imports: [],
+  imports: [CommonModule],
   templateUrl: './friendship-dialog.html',
   styleUrl: './friendship-dialog.scss'
 })
 export class FriendshipDialog {
   private readonly friendshipService = inject(FriendshipService);
   private readonly authService = inject(AuthService);
+  private readonly usersService = inject(UsersService);
 
   public friendSelected = output<{friendId: string, friendData: IUser}>();
   public closed = output<void>();
 
   // Signals
   public friends = signal<IFriendship[]>([]);
+  public searchResults = signal<IUser[]>([]);
   public currentUser = this.authService.currentUser;
   public isLoading = this.friendshipService.isLoading;
   public isLoadingBtn = this.friendshipService.isLoadingBtn;
   public searchQuery = signal('');
   public selectedFriend = signal<{friendshipId: string, contactData: IUser} | null>(null);
+  public isSearching = signal(false);
+  public activeTab = signal<'contacts' | 'search'>('contacts');
 
   constructor() {
-    // Cargar contactos al inicializar el componente
+    this.loadContacts();
+  }
+
+  private loadContacts() {
     const userId = this.currentUser()?.id;
     if (userId) {
       this.friendshipService.getAllByUser(userId).subscribe((response) => {
@@ -48,19 +57,61 @@ export class FriendshipDialog {
     );
   }
 
-  public selectContact(contact: IUser) {
-    const friendship = this.friends().find(f => f.friend.id === contact.id);
-    if (!friendship) return;
+  public onSearchChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const query = input.value.trim();
+    this.searchQuery.set(query);
 
+    if (query.length > 2) {
+      this.activeTab.set('search');
+      this.isSearching.set(true);
+      this.usersService.searchUsers(query).subscribe({
+        next: (users) => {
+          // Filtrar usuarios que ya son amigos
+          const friendIds = new Set(this.friends().map(f => f.friend.id));
+          const filteredUsers = users.filter(user => 
+            user.id !== this.currentUser()?.id && !friendIds.has(user.id)
+          );
+          this.searchResults.set(filteredUsers);
+          this.isSearching.set(false);
+        },
+        error: () => {
+          this.isSearching.set(false);
+          this.searchResults.set([]);
+        }
+      });
+    } else {
+      this.activeTab.set('contacts');
+      this.searchResults.set([]);
+    }
+  }
+
+  public selectContact(contact: IUser) {
+    // Verificar si es un usuario de búsqueda o un amigo existente
+    const friendship = this.friends().find(f => f.friend.id === contact.id);
+    
     this.selectedFriend.set({
-      friendshipId: friendship.id,
+      friendshipId: friendship?.id || '',
       contactData: contact,
     });
   }
 
-  public onSearchChange(event: Event) {
-    const input = event.target as HTMLInputElement;
-    this.searchQuery.set(input.value);
+  public addFriend(user: IUser) {
+    if (!user.id) return;
+    this.friendshipService.sendFriendRequest(user.id).subscribe({
+      next: (newFriendship) => {
+        console.log('Solicitud de amistad enviada:', newFriendship);
+        // Actualizar la lista de amigos
+        this.friends.update(friends => [...friends, newFriendship]);
+        console.log('friends:', this.friends());
+        this.activeTab.set('contacts');
+        this.searchQuery.set('');
+        this.searchResults.set([]);
+      },
+      error: (error) => {
+        console.error('Error al enviar solicitud de amistad:', error);
+      }
+    });
   }
 
   public confirmSelection() {
@@ -78,6 +129,7 @@ export class FriendshipDialog {
     event.stopPropagation();
   }
 
+  // Métodos auxiliares existentes...
   getContactDisplayName(contact: IUser): string {
     if (contact.first_name && contact.last_name) {
       return `${contact.first_name} ${contact.last_name}`;

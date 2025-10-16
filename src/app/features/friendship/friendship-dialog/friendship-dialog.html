@@ -16,8 +16,8 @@
           </svg>
         </div>
         <div>
-          <h2 class="text-xl font-bold text-gray-900 dark:text-white" i18n>Seleccionar Contacto</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400" i18n>Elige un contacto para chatear</p>
+          <h2 class="text-xl font-bold text-gray-900 dark:text-white" i18n>Gestionar Contactos</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400" i18n>Busca usuarios o selecciona un contacto</p>
         </div>
       </div>
       <button
@@ -41,7 +41,7 @@
         </svg>
         <input
           type="text"
-          placeholder="Buscar contactos..."
+          placeholder="Buscar contactos o usuarios..."
           class="w-full pl-11 pr-4 py-3 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
           (input)="onSearchChange($event)"
           [value]="searchQuery()"
@@ -49,7 +49,37 @@
       </div>
     </div>
 
-    <!-- Lista de contactos -->
+    <!-- Pestañas -->
+    <div class="px-6 pb-3">
+      <div class="flex border-b border-gray-200 dark:border-gray-600">
+        <button
+          class="flex-1 px-4 py-2 text-sm font-medium transition-all duration-200"
+          [class]="activeTab() === 'contacts' ? 
+            'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' : 
+            'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+          (click)="activeTab.set('contacts')"
+        >
+          <span i18n>Contactos</span>
+          <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+            {{ friends().length }}
+          </span>
+        </button>
+        <button
+          class="flex-1 px-4 py-2 text-sm font-medium transition-all duration-200"
+          [class]="activeTab() === 'search' ? 
+            'text-blue-600 dark:text-blue-400 border-b-2 border-blue-500' : 
+            'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'"
+          (click)="activeTab.set('search')"
+        >
+          <span i18n>Buscar</span>
+          <span class="ml-1 text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded-full">
+            {{ searchResults().length }}
+          </span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Lista de contactos/resultados -->
     <div class="flex-1 overflow-y-auto px-3 pb-3">
       @if (isLoading()) {
         <!-- Estado de carga -->
@@ -57,8 +87,8 @@
           <div class="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
           <p class="text-gray-500 dark:text-gray-400" i18n>Cargando contactos...</p>
         </div>
-      } @else if (filteredContacts().length === 0) {
-        <!-- Estado vacío -->
+      } @else if (activeTab() === 'contacts' && filteredContacts().length === 0) {
+        <!-- Estado vacío para contactos -->
         <div class="flex flex-col items-center justify-center py-12 text-center px-6">
           <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center mb-4">
             <svg class="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,113 +96,191 @@
                     d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/>
             </svg>
           </div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" i18n>No se encontraron contactos</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" i18n>No tienes contactos</h3>
           <p class="text-gray-500 dark:text-gray-400 text-sm" i18n>
-            {{ searchQuery() ? 'Prueba con otros términos de búsqueda' : 'Añade contactos para comenzar a chatear' }}
+            Busca usuarios para agregarlos a tus contactos
+          </p>
+        </div>
+      } @else if (activeTab() === 'search' && isSearching()) {
+        <!-- Búsqueda en progreso -->
+        <div class="flex flex-col items-center justify-center py-8">
+          <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+          <p class="text-gray-500 dark:text-gray-400 text-sm" i18n>Buscando usuarios...</p>
+        </div>
+      } @else if (activeTab() === 'search' && searchResults().length === 0 && searchQuery().length > 2) {
+        <!-- No hay resultados de búsqueda -->
+        <div class="flex flex-col items-center justify-center py-8 text-center px-6">
+          <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center mb-4">
+            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2" i18n>No se encontraron usuarios</h3>
+          <p class="text-gray-500 dark:text-gray-400 text-sm" i18n>
+            Intenta con otro nombre de usuario
           </p>
         </div>
       } @else {
-        <!-- Lista de contactos -->
+        <!-- Lista de elementos -->
         <div class="space-y-2">
-          @for (friendship of filteredContacts(); track friendship.id) {
-            @let displayName = getContactDisplayName(friendship.friend);
-            <button
-              class="w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 group border border-transparent hover:border-gray-200 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
-              [class.bg-blue-50]="isSelected(friendship.friend)"
-              [class.border-blue-200]="isSelected(friendship.friend)"
-              [class.dark:bg-blue-900/20]="isSelected(friendship.friend)"
-              [class.dark:border-blue-800]="isSelected(friendship.friend)"
-              (click)="selectContact(friendship.friend)"
-            >
-              <!-- Avatar -->
-              <div class="relative flex-shrink-0">
-                <div 
-                  class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow-lg"
-                  [class]="friendship.friend.avatar_url ? '' : getContactAvatarColor(friendship.friend)"
-                >
-                  @if (friendship.friend.avatar_url) {
-                    <img 
-                      [src]="friendship.friend.avatar_url" 
-                      [alt]="displayName"
-                      class="w-14 h-14 rounded-2xl object-cover"
-                    >
-                  } @else {
-                    {{ getContactInitials(friendship.friend) }}
-                  }
-                </div>
-                <!-- Indicador de estado en línea -->
-                @if (isContactOnline(friendship.friend)) {
-                  <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
-                } @else {
-                  <div class="absolute bottom-0 right-0 w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
-                }
-              </div>
-
-              <!-- Información del contacto -->
-              <div class="flex-1 text-left min-w-0">
-                <div class="flex items-center justify-between mb-1">
-                  <p class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {{ displayName }}
-                  </p>
-                  @if (!isContactOnline(friendship.friend)) {
-                    @let lastSeen = getLastSeen(friendship.friend);
-                    @if (lastSeen) {
-                      <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
-                        {{ lastSeen }}
-                      </span>
-                    }
-                  }
-                </div>
-                <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ friendship.friend.username }}</p>
-                
-                <!-- Estado personalizado -->
-                @if (friendship.friend.status && friendship.friend.status !== 'online') {
-                  <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ friendship.friend.status }}</p>
-                }
-              </div>
-
-              <!-- Icono de selección -->
-              <div 
-                class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center transition-all duration-200 flex-shrink-0"
-                [class.bg-blue-500]="isSelected(friendship.friend)"
-                [class.border-blue-500]="isSelected(friendship.friend)"
+          @if (activeTab() === 'contacts') {
+            <!-- Lista de contactos existentes -->
+            @for (friendship of filteredContacts(); track friendship.id) {
+              @let displayName = getContactDisplayName(friendship.friend);
+              <button
+                class="w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 group border border-transparent hover:border-gray-200 dark:hover:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                [class.bg-blue-50]="isSelected(friendship.friend)"
+                [class.border-blue-200]="isSelected(friendship.friend)"
+                [class.dark:bg-blue-900/20]="isSelected(friendship.friend)"
+                [class.dark:border-blue-800]="isSelected(friendship.friend)"
+                (click)="selectContact(friendship.friend)"
               >
-                @if (isSelected(friendship.friend)) {
-                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                <!-- Avatar y contenido existente... -->
+                <div class="relative flex-shrink-0">
+                  <div 
+                    class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow-lg"
+                    [class]="friendship.friend.avatar_url ? '' : getContactAvatarColor(friendship.friend)"
+                  >
+                    @if (friendship.friend.avatar_url) {
+                      <img 
+                        [src]="friendship.friend.avatar_url" 
+                        [alt]="displayName"
+                        class="w-14 h-14 rounded-2xl object-cover"
+                      >
+                    } @else {
+                      {{ getContactInitials(friendship.friend) }}
+                    }
+                  </div>
+                  @if (isContactOnline(friendship.friend)) {
+                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
+                  } @else {
+                    <div class="absolute bottom-0 right-0 w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded-full border-2 border-white dark:border-gray-800 shadow-sm"></div>
+                  }
+                </div>
+
+                <div class="flex-1 text-left min-w-0">
+                  <div class="flex items-center justify-between mb-1">
+                    <p class="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {{ displayName }}
+                    </p>
+                    @if (!isContactOnline(friendship.friend)) {
+                      @let lastSeen = getLastSeen(friendship.friend);
+                      @if (lastSeen) {
+                        <span class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">
+                          {{ lastSeen }}
+                        </span>
+                      }
+                    }
+                  </div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ friendship.friend.username }}</p>
+                  
+                  @if (friendship.friend.status && friendship.friend.status !== 'online') {
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ friendship.friend.status }}</p>
+                  }
+                </div>
+
+                <div 
+                  class="w-6 h-6 rounded-full border-2 border-gray-300 dark:border-gray-600 flex items-center justify-center transition-all duration-200 flex-shrink-0"
+                  [class.bg-blue-500]="isSelected(friendship.friend)"
+                  [class.border-blue-500]="isSelected(friendship.friend)"
+                >
+                  @if (isSelected(friendship.friend)) {
+                    <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  }
+                </div>
+              </button>
+            }
+          } @else {
+            <!-- Resultados de búsqueda -->
+            @for (user of searchResults(); track user.id) {
+              @let displayName = getContactDisplayName(user);
+              <div
+                class="w-full flex items-center space-x-4 p-4 rounded-xl transition-all duration-200 group border border-gray-200 dark:border-gray-600 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+              >
+                <div class="relative flex-shrink-0">
+                  <div 
+                    class="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow-lg"
+                    [class]="user.avatar_url ? '' : getContactAvatarColor(user)"
+                  >
+                    @if (user.avatar_url) {
+                      <img 
+                        [src]="user.avatar_url" 
+                        [alt]="displayName"
+                        class="w-14 h-14 rounded-2xl object-cover"
+                      >
+                    } @else {
+                      {{ getContactInitials(user) }}
+                    }
+                  </div>
+                </div>
+
+                <div class="flex-1 text-left min-w-0">
+                  <div class="flex items-center justify-between mb-1">
+                    <p class="font-semibold text-gray-900 dark:text-white truncate">
+                      {{ displayName }}
+                    </p>
+                  </div>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 truncate">@{{ user.username }}</p>
+                  
+                  @if (user.status && user.status !== 'online') {
+                    <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 truncate">{{ user.status }}</p>
+                  }
+                </div>
+
+                <button
+                  class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-br from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 rounded-lg shadow-sm transition-all duration-200 flex items-center space-x-2 flex-shrink-0"
+                  (click)="addFriend(user)"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                   </svg>
-                }
+                  <span i18n>
+                    @if(isLoadingBtn()) {
+                      <svg aria-hidden="true" class="inline w-8 h-8 text-gray-200 animate-spin dark:text-gray-600 fill-blue-600" viewBox="0 0 100 101" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M100 50.5908C100 78.2051 77.6142 100.591 50 100.591C22.3858 100.591 0 78.2051 0 50.5908C0 22.9766 22.3858 0.59082 50 0.59082C77.6142 0.59082 100 22.9766 100 50.5908ZM9.08144 50.5908C9.08144 73.1895 27.4013 91.5094 50 91.5094C72.5987 91.5094 90.9186 73.1895 90.9186 50.5908C90.9186 27.9921 72.5987 9.67226 50 9.67226C27.4013 9.67226 9.08144 27.9921 9.08144 50.5908Z" fill="currentColor"/>
+                        <path d="M93.9676 39.0409C96.393 38.4038 97.8624 35.9116 97.0079 33.5539C95.2932 28.8227 92.871 24.3692 89.8167 20.348C85.8452 15.1192 80.8826 10.7238 75.2124 7.41289C69.5422 4.10194 63.2754 1.94025 56.7698 1.05124C51.7666 0.367541 46.6976 0.446843 41.7345 1.27873C39.2613 1.69328 37.813 4.19778 38.4501 6.62326C39.0873 9.04874 41.5694 10.4717 44.0505 10.1071C47.8511 9.54855 51.7191 9.52689 55.5402 10.0491C60.8642 10.7766 65.9928 12.5457 70.6331 15.2552C75.2735 17.9648 79.3347 21.5619 82.5849 25.841C84.9175 28.9121 86.7997 32.2913 88.1811 35.8758C89.083 38.2158 91.5421 39.6781 93.9676 39.0409Z" fill="currentFill"/>
+                      </svg>
+                    }
+                    @if(!isLoadingBtn()) {
+                      Agregar
+                    }
+                  </span>
+                </button>
               </div>
-            </button>
+            }
           }
         </div>
       }
     </div>
 
-    <!-- Footer -->
-    <div class="p-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30 rounded-b-2xl">
-      <div class="flex justify-between items-center">
-        <span class="text-sm text-gray-500 dark:text-gray-400" i18n>
-          {{ filteredContacts().length }} {{ filteredContacts().length === 1 ? 'contacto' : 'contactos' }}
-        </span>
-        <div class="flex space-x-3">
-          <button
-            class="px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-all duration-200"
-            (click)="closed.emit()"
-            i18n
-          >
-            Cancelar
-          </button>
-          <button
-            class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            [disabled]="!selectedFriend()"
-            (click)="confirmSelection()"
-            i18n
-          >
-            Iniciar Chat
-          </button>
+    <!-- Footer (solo mostrar para selección de contactos existentes) -->
+    @if (activeTab() === 'contacts') {
+      <div class="p-6 pt-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30 rounded-b-2xl">
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500 dark:text-gray-400" i18n>
+            {{ filteredContacts().length }} {{ filteredContacts().length === 1 ? 'contacto' : 'contactos' }}
+          </span>
+          <div class="flex space-x-3">
+            <button
+              class="px-6 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-all duration-200"
+              (click)="closed.emit()"
+              i18n
+            >
+              Cancelar
+            </button>
+            <button
+              class="px-6 py-2.5 text-sm font-medium text-white bg-gradient-to-br from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 rounded-lg shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              [disabled]="!selectedFriend()"
+              (click)="confirmSelection()"
+              i18n
+            >
+              Iniciar Chat
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    }
   </div>
 </div>

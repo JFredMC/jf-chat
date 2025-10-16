@@ -12,6 +12,7 @@ export class UsersService {
   private readonly authService = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly configService = inject(ConfigService);
+  private readonly urlApi = this.configService.getApiUrl('/user');
 
   // Signals
   isLoading = signal<boolean>(false);
@@ -61,9 +62,7 @@ export class UsersService {
   public getAll(): Observable<IUser[]> {
     this.isLoadingBtn.set(true);
 
-    const url = this.configService.getApiUrl('/user');
-
-    return this.http.get<IUser[]>(url).pipe(
+    return this.http.get<IUser[]>(this.urlApi).pipe(
       tap((response) => {
         return response;
       }),
@@ -83,9 +82,7 @@ export class UsersService {
   public register(user: IUser): Observable<IUser> {
     this.isLoadingBtn.set(true);
 
-    const url = this.configService.getApiUrl('/user');
-
-    return this.http.post<IUser>(url, user).pipe(
+    return this.http.post<IUser>(this.urlApi, user).pipe(
       tap((response) => {
         console.log('register response: ', response);
         return response;
@@ -97,6 +94,19 @@ export class UsersService {
       }),
       finalize(() => {
         this.isLoadingBtn.set(false);
+      })
+    );
+  }
+
+  
+  public searchUsers(query: string): Observable<IUser[]> {
+    return this.http.get<IUser[]>(`${this.urlApi}/search?q=${encodeURIComponent(query)}`).pipe(
+      tap((response) => {
+        return response;
+      }),
+      catchError((error) => {
+        const errorMessage = this.getErrorMessage(error);
+        return throwError(() => errorMessage);
       })
     );
   }
