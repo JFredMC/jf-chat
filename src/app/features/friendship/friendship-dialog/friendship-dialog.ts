@@ -100,10 +100,7 @@ export class FriendshipDialog {
     if (!user.id) return;
     this.friendshipService.sendFriendRequest(user.id).subscribe({
       next: (newFriendship) => {
-        console.log('Solicitud de amistad enviada:', newFriendship);
-        // Actualizar la lista de amigos
         this.friends.update(friends => [...friends, newFriendship]);
-        console.log('friends:', this.friends());
         this.activeTab.set('contacts');
         this.searchQuery.set('');
         this.searchResults.set([]);

@@ -79,6 +79,16 @@ export class ConversationList {
     return conversation.name?.substring(0, 2).toUpperCase() || 'GP';
   }
 
+  public getConversationAvatarColor(conversation: IConversation): string {
+    if (conversation.type === 'direct' && conversation.members) {
+      const otherMember = conversation.members.find(m => m.user_id !== this.currentUser()?.id);
+      if (otherMember?.user?.id) {
+        return this.friendshipService.generateAvatarColor(otherMember.user.id);
+      }
+    }
+    return conversation.name?.substring(0, 2).toUpperCase() || 'GP';
+  }
+
   public getLastMessagePreview(conversation: IConversation): string {
     // Si la conversación tiene mensajes cargados, usar el último
     const messages = this.conversationService.messages();

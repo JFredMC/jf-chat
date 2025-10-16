@@ -6,22 +6,25 @@ import { ConversationService } from '../conversations/services/conversation.serv
 import { WebsocketService } from '../../../services/web-socket.service';
 import { IMessage } from '../messages/types/message.type';
 import { IConversation } from '../conversations/types/conversation.type';
-import { MessageBubble } from '../message-bubble/message-bubble';
+import { MessageBubble } from './components/message-bubble/message-bubble';
 import { EMessageType } from '../messages/enum/message-type.enum';
 import { EMessageStatuses } from '../messages/enum/message-status.enum';
+import { SweetAlertService } from '../../../services/sweet-alert.service';
+import { ContactView } from './components/contact-view/contact-view';
+import { ChatActions } from './components/chat-actions/chat-actions';
 
-// chat-area.ts
 @Component({
   selector: 'app-chat-area',
   templateUrl: './chat-area.html',
   styleUrl: './chat-area.scss',
-  imports: [MessageBubble],
+  imports: [MessageBubble, ContactView, ChatActions],
 })
 export class ChatArea {
   private readonly conversationService = inject(ConversationService);
   private readonly websocketService = inject(WebsocketService);
   private readonly authService = inject(AuthService);
   private readonly friendshipService = inject(FriendshipService);
+  private readonly sweetAlertService = inject(SweetAlertService);
   private readonly destroyRef = inject(DestroyRef);
 
   // Exponer el servicio como público para el template
@@ -32,6 +35,10 @@ export class ChatArea {
   public messageInput = signal<string>('');
   public isTyping = signal<boolean>(false);
   public attachedFiles = signal<File[]>([]);
+
+  // Señales para el menú de opciones
+  public isContactViewOpen = signal<boolean>(false);
+  public selectedContact = signal<IUser | null>(null);
 
   constructor() {
     this.setupWebSocketConnection();
@@ -318,6 +325,33 @@ export class ChatArea {
     setTimeout(() => {
       this.markMessagesAsRead();
     }, 500); // Pequeño delay para asegurar que la UI esté renderizada
+  }
+
+  viewContact(): void {
+    const conversation = this.activeConversation();
+    if (conversation?.type === 'direct') {
+      const otherMember = this.getOtherMember(conversation);
+      if (otherMember) {
+        this.selectedContact.set(otherMember);
+        this.isContactViewOpen.set(true);
+      }
+    }
+  }
+
+  closeContactView(): void {
+    this.isContactViewOpen.set(false);
+    this.selectedContact.set(null);
+  }
+
+  // Método llamado cuando se elimina una conversación desde ChatActions
+  onConversationDeleted(): void {
+    this.conversationService.setActiveConversation(null);
+    this.conversationService.getUserConversations().subscribe();
+  }
+
+  // Método para enviar mensaje desde la vista de contacto
+  onSendMessageFromContact(): void {
+    this.closeContactView();
   }
 
   // Métodos auxiliares para el template

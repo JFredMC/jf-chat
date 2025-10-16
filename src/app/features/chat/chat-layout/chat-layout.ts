@@ -125,36 +125,20 @@ export class ChatLayout {
   }
 
   onFriendSelected(selected: {friendId: string, friendData: IUser}): void {
-    console.log('Amigo seleccionado:', selected);
     this.startChatWithFriend(selected.friendData.id!);
     this.closeContactsDialog();
   }
 
   private startChatWithFriend(friendId: number) {
-    console.log('Iniciando chat con el amigo ID:', friendId);
-    
     this.conversationService.getOrCreateDirectConversation(friendId).subscribe({
       next: (conversation) => {
-        console.log('Conversación creada/obtenida:', conversation);
-        this.sweetAlertService.showAlert(
-          'Chat iniciado',
-          'La conversación ha comenzado'
-        );
       },
-      error: (error) => {
-        console.error('Error al crear conversación:', error);
-        this.sweetAlertService.showAlert(
-          'Error',
-          'No se pudo iniciar la conversación',
-          'error'
-        );
-      }
     });
   }
 
   // Método para seleccionar una conversación existente
   selectConversation(conversation: IConversation): void {
     this.conversationService.setActiveConversation(conversation);
-    this.isMobileMenuOpen.set(false); // Cerrar menú móvil si está abierto
+    this.isMobileMenuOpen.set(false);
   }
 }

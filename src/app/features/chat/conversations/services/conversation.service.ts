@@ -122,4 +122,15 @@ export class ConversationService {
       return [conversation, ...filtered];
     });
   }
+
+  deleteConversation(conversationId: number): Observable<void> {
+    return this.http.delete<void>(`${this.urlApi}/${conversationId}`).pipe(
+      tap(() => {
+        this.conversations.update(convs => convs.filter(c => c.id !== conversationId));
+        if (this.activeConversation()?.id === conversationId) {
+          this.activeConversation.set(null);
+        }
+      })
+    );
+  }
 }

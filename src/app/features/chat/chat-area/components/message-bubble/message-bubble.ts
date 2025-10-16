@@ -1,9 +1,10 @@
-import { Component, inject, input, Input } from '@angular/core';
-import { IMessage } from '../messages/types/message.type';
-import { IConversation } from '../conversations/types/conversation.type';
-import { AuthService } from '../../../services/auth.service';
-import { FriendshipService } from '../../friendship/services/friendship.service';
-import { IUser } from '../../../types/user';
+import { Component, inject, input } from '@angular/core';
+import { AuthService } from '../../../../../services/auth.service';
+import { FriendshipService } from '../../../../friendship/services/friendship.service';
+import { IMessage } from '../../../messages/types/message.type';
+import { IConversation } from '../../../conversations/types/conversation.type';
+import { IUser } from '../../../../../types/user';
+
 
 @Component({
   selector: 'app-message-bubble',
