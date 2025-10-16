@@ -19,7 +19,18 @@ export class WebsocketService {
 
   // Subjects para notificar a los componentes
   public newMessage = new Subject<IMessage>();
-  public messageRead = new Subject<{messageId: number, userId: number}>();
+  public messageRead = new Subject<{
+    messageId: number;
+    userId: number;
+    readAt: string;
+    conversationId: number;
+  }>();
+  public conversationRead = new Subject<{
+    conversationId: number;
+    userId: number;
+    readAt: string;
+    unreadCount: number;
+  }>();
   public userStatusChange = new Subject<{userId: number, status: string}>();
   public connectionStatus = new Subject<boolean>();
   public userJoined = new Subject<{clientId: string; userId?: number}>();
@@ -71,8 +82,22 @@ export class WebsocketService {
       this.newMessage.next(message);
     });
 
-    this.socket.on('message_read', (data: { messageId: number; userId: number }) => {
+    this.socket.on('message_read', (data: {
+      messageId: number;
+      userId: number;
+      readAt: string;
+      conversationId: number;
+    }) => {
       this.messageRead.next(data);
+    });
+
+    this.socket.on('conversation_read', (data: {
+      conversationId: number;
+      userId: number;
+      readAt: string;
+      unreadCount: number;
+    }) => {
+      this.conversationRead.next(data);
     });
 
     this.socket.on('user_status', (data: { userId: number; status: string }) => {
@@ -130,10 +155,17 @@ export class WebsocketService {
     }
   }
 
-  // Marcar como leído
-  markAsRead(messageId: number, userId: number): void {
+ // Marcar mensaje individual como leído
+  markAsRead(messageId: number): void {
     if (this.isConnected) {
-      this.socket.emit('mark_read', { messageId, userId });
+      this.socket.emit('mark_read', { messageId });
+    }
+  }
+
+  // Marcar toda la conversación como leída
+  markConversationAsRead(conversationId: number): void {
+    if (this.isConnected) {
+      this.socket.emit('mark_conversation_read', { conversationId });
     }
   }
 

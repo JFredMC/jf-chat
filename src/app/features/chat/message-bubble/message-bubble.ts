@@ -102,11 +102,15 @@ export class MessageBubble {
 
   public hasReadStatus(): boolean {
     const statuses = this.message()?.statuses;
-    return Array.isArray(statuses) && statuses.some(s => s?.status === 'read');
+    const currentUserId = this.currentUser?.id;
+    
+    return Array.isArray(statuses) && 
+           statuses.some(s => s?.status === 'read' && s.user_id === currentUserId);
   }
 
   public hasOnlySentStatus(): boolean {
     const statuses = this.message()?.statuses;
-    return !Array.isArray(statuses) || statuses.every(s => s?.status === 'sent');
+    return !Array.isArray(statuses) || statuses.length === 0 || 
+           statuses.every(s => s?.status === 'sent');
   }
 }

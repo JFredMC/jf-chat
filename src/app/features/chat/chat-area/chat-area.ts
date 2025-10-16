@@ -8,6 +8,7 @@ import { IMessage } from '../messages/types/message.type';
 import { IConversation } from '../conversations/types/conversation.type';
 import { MessageBubble } from '../message-bubble/message-bubble';
 import { EMessageType } from '../messages/enum/message-type.enum';
+import { EMessageStatuses } from '../messages/enum/message-status.enum';
 
 // chat-area.ts
 @Component({
@@ -75,6 +76,14 @@ export class ChatArea {
       }
     });
 
+    const messageReadSub = this.websocketService.messageRead.subscribe((data) => {
+      this.handleMessageRead(data);
+    });
+
+    const conversationReadSub = this.websocketService.conversationRead.subscribe((data) => {
+      this.handleConversationRead(data);
+    });
+
     // Limpiar suscripciones
     this.destroyRef.onDestroy(() => {
       newMessageSub.unsubscribe();
@@ -82,6 +91,8 @@ export class ChatArea {
       userJoinedSub.unsubscribe();
       userLeftSub.unsubscribe();
       connectionStatusSub.unsubscribe();
+      messageReadSub.unsubscribe();
+      conversationReadSub.unsubscribe();
     });
   }
 
@@ -229,24 +240,84 @@ export class ChatArea {
     this.attachedFiles.update(files => files.filter((_, i) => i !== index));
   }
 
-  // Marcar mensajes como leídos
+  private handleMessageRead(data: {
+    messageId: number;
+    userId: number;
+    readAt: string;
+    conversationId: number;
+  }): void {
+    const activeConv = this.activeConversation();
+    
+    // Solo procesar si es la conversación activa
+    if (activeConv && activeConv.id === data.conversationId) {
+      this.messages.update(messages => 
+        messages.map(message => {
+          if (message.id === data.messageId) {
+            const updatedStatuses = [
+              ...(message.statuses || []),
+              {
+                user_id: data.userId,
+                status: EMessageStatuses.read,
+                read_at: data.readAt
+              }
+            ];
+            return { ...message, statuses: updatedStatuses };
+          }
+          return message;
+        })
+      );
+    }
+  }
+
+  private handleConversationRead(data: {
+    conversationId: number;
+    userId: number;
+    readAt: string;
+    unreadCount: number;
+  }): void {
+    // Actualizar la lista de conversaciones si es necesario
+    console.log(`Conversation ${data.conversationId} marked as read by user ${data.userId}`);
+  }
+
+  // Marcar mensajes como leídos cuando se cargan o se ven
   markMessagesAsRead(): void {
     const conversation = this.activeConversation();
     const userId = this.currentUser()?.id;
     
     if (conversation && userId) {
+      // Marcar toda la conversación como leída
+      this.websocketService.markConversationAsRead(conversation.id!);
+      
+      // También marcar mensajes individuales si es necesario
       this.messages().forEach((message) => {
-        if (message.sender_id !== userId && !this.isMessageRead(message)) {
-          this.websocketService.markAsRead(message.id!, userId);
+        if (message.sender_id !== userId && !this.isMessageReadByUser(message, userId)) {
+          this.websocketService.markAsRead(message.id!);
         }
       });
     }
   }
 
-  // Verificar si mensaje fue leído
+  // Verificar si un mensaje fue leído por un usuario específico
+  private isMessageReadByUser(message: IMessage, userId: number): boolean {
+    return message.statuses?.some(status => 
+      status.user_id === userId && status.status === 'read'
+    ) || false;
+  }
+
+  // Método auxiliar para el template (si lo necesitas)
   isMessageRead(message: IMessage): boolean {
-    // Implementar lógica basada en message_status
-    return false;
+    const userId = this.currentUser()?.id;
+    if (!userId) return false;
+    
+    return this.isMessageReadByUser(message, userId);
+  }
+
+  // Llamar este método cuando la conversación se active o se recarguen mensajes
+  onConversationActivated(): void {
+    this.scrollToBottom();
+    setTimeout(() => {
+      this.markMessagesAsRead();
+    }, 500); // Pequeño delay para asegurar que la UI esté renderizada
   }
 
   // Métodos auxiliares para el template
