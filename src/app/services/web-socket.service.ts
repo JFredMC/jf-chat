@@ -6,7 +6,6 @@ import { ConfigService } from './config.service';
 import { ClientToServerEvents, ServerToClientEvents } from '../types/web-socket.type';
 import { IMessage } from '../features/chat/messages/types/message.type';
 
-
 @Injectable({
   providedIn: 'root'
 })

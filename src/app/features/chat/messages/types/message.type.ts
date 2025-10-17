@@ -1,3 +1,4 @@
+import { IAttachment } from "../../../../types/attachment.type";
 import { IAudit } from "../../../../types/audit";
 import { IUser } from "../../../../types/user";
 import { IConversation } from "../../conversations/types/conversation.type";
@@ -16,4 +17,5 @@ export interface IMessage extends IAudit {
   sender?: IUser;
   reply_to?: IMessage;
   statuses?: IMessageStatus[];
+  attachments?: IAttachment[],
 }
