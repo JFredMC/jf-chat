@@ -205,15 +205,6 @@
     tslib "^2.3.0"
     zod "^4.0.10"
 
-"@angular/localize@22.2.1":
-  version "22.2.1"
-  resolved "https://registry.yarnpkg.com/@angular/localize/-/localize-22.2.1.tgz#89a3f0487f6406862a686cc7467a125b254dc3a6"
-  integrity sha512-fJ3GKhHQbCijcyjTpZsL+2MjVcFWXcJU0jOFlUKrBR3msWYcsF0gCjrPEcJXNlouUKBlC+2dlm9xnjqs2MUy6g==
-  dependencies:
-    "@babel/core" "8.0.1"
-    tinyglobby "^0.2.12"
-    yargs "^18.0.0"
-
 "@angular/platform-browser@^22.2.1":
   version "22.2.1"
   resolved "https://registry.yarnpkg.com/@angular/platform-browser/-/platform-browser-22.2.1.tgz#1bdb0438aa1ff6e7f7eab6c0fd799184844561a4"
@@ -3311,11 +3302,6 @@ picomatch@^2.3.1:
   resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-2.3.1.tgz#3ba3833733646d9d3e4995946c1365a67fb07a42"
   integrity sha512-JU3teHTNjmE2VCGFzuY8EXzCDVwEqB2a8fsIvwaStHhAWJEeVd1o1QD80CU6+ZdEXXSLbSsuLwJjkCBWqRQUVA==
 
-picomatch@^4.0.3:
-  version "4.0.3"
-  resolved "https://registry.yarnpkg.com/picomatch/-/picomatch-4.0.3.tgz#796c76136d1eead715db1e7bad785dedd695a042"
-  integrity sha512-5gTmgEY/sqK6gFXLIsQNH19lWb4ebPDLA4SdLP7dsWkIXHWlG66oPuVvXSGFPppYZz8ZDZq0dYYrbHfBCVUb1Q==
-
 piscina@5.3.2:
   version "5.3.2"
   resolved "https://registry.yarnpkg.com/piscina/-/piscina-5.3.2.tgz#ea9376457c47f54d01ecd7556eed94c49160f400"
@@ -3744,11 +3730,6 @@ supports-color@^8.1.1:
   dependencies:
     has-flag "^4.0.0"
 
-sweetalert2@^11.26.25:
-  version "11.26.25"
-  resolved "https://registry.yarnpkg.com/sweetalert2/-/sweetalert2-11.26.25.tgz#ba24ffb79c67648ac51f834620baa15866a56e35"
-  integrity sha512-+hunCOJdJ6FLj04T9YSLvvZXRjsvIkTeTKP2e4VF8CaBias961BTnWiSFAy7F/CM5eq3QK2Rraoc5Gzftslvkg==
-
 sync-child-process@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/sync-child-process/-/sync-child-process-1.0.2.tgz#45e7c72e756d1243e80b547ea2e17957ab9e367f"
@@ -3788,14 +3769,6 @@ tinyglobby@0.2.17, tinyglobby@^0.2.15, tinyglobby@^0.2.17:
   dependencies:
     fdir "^6.5.0"
     picomatch "^4.0.4"
-
-tinyglobby@^0.2.12:
-  version "0.2.15"
-  resolved "https://registry.yarnpkg.com/tinyglobby/-/tinyglobby-0.2.15.tgz#e228dd1e638cea993d2fdb4fcd2d4602a79951c2"
-  integrity sha512-j2Zq4NyQYG5XMST4cbs02Ak8iJUdxRM0XI5QyxXuZOzKOINmWurp3smXu3y5wDcJrptwpSjgXHzIQxR0omXljQ==
-  dependencies:
-    fdir "^6.5.0"
-    picomatch "^4.0.3"
 
 tldts-core@^7.4.16:
   version "7.4.16"

@@ -23,23 +23,13 @@ module.exports = defineConfig([
         'error',
         { type: 'element', prefix: 'app', style: 'kebab-case' },
       ],
-      // Legacy code (rewritten on `develop`): reported, not blocking.
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@angular-eslint/prefer-on-push-component-change-detection': 'warn',
-      '@angular-eslint/prefer-inject': 'warn',
-      '@typescript-eslint/no-inferrable-types': 'warn',
-      '@typescript-eslint/consistent-indexed-object-style': 'warn',
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@angular-eslint/prefer-on-push-component-change-detection': 'error',
     },
   },
   {
     files: ['**/*.html'],
     extends: [angular.configs.templateRecommended, angular.configs.templateAccessibility],
-    rules: {
-      // Legacy templates (rewritten on `develop`): reported, not blocking.
-      '@angular-eslint/template/click-events-have-key-events': 'warn',
-      '@angular-eslint/template/interactive-supports-focus': 'warn',
-      '@angular-eslint/template/label-has-associated-control': 'warn',
-    },
+    rules: {},
   },
 ]);

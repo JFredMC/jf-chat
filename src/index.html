@@ -1,23 +1,26 @@
 <!doctype html>
-<html lang="en" class="dark">
-<head>
-  <meta charset="utf-8">
-  <title>JfChat</title>
-  <base href="/">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <script>
-    // Maneja la redirección desde 404.html
-    (function() {
-      var redirect = sessionStorage.redirect;
-      delete sessionStorage.redirect;
-      if (redirect && redirect != location.pathname) {
-        history.replaceState(null, null, redirect);
-      }
-    })();
-  </script>
-</head>
-<body class="bg-white dark:bg-gray-900 transition-colors duration-500">
-  <app-root></app-root>
-</body>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <title>JfChat</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="JfChat: chat en tiempo real con amigos, presencia, indicador de escritura y confirmaciones de lectura." />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      // Apply the saved theme before the first paint (no flash).
+      (function () {
+        try {
+          var saved = localStorage.getItem('jfchat.theme');
+          var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <app-root></app-root>
+    <noscript>JfChat necesita JavaScript para funcionar.</noscript>
+  </body>
 </html>

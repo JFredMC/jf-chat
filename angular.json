@@ -7,13 +7,6 @@
   "newProjectRoot": "projects",
   "projects": {
     "jf-chat": {
-      "i18n": {
-        "sourceLocale": "es-CO",
-        "locales": {
-          "es": "src/locale/messages.es.xlf",
-          "en": "src/locale/messages.en.xlf"
-        }
-      },
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -39,20 +32,15 @@
             "styles": [
               "src/styles.scss"
             ],
-            "polyfills": [
-              "@angular/localize/init"
-            ],
-            "allowedCommonJsDependencies": [
-              "sweetalert2"
-            ]
+            "allowedCommonJsDependencies": []
           },
           "configurations": {
             "production": {
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "1MB"
+                  "maximumWarning": "400kB",
+                  "maximumError": "600kB"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -92,9 +80,6 @@
             }
           },
           "defaultConfiguration": "development"
-        },
-        "extract-i18n": {
-          "builder": "@angular/build:extract-i18n"
         },
         "test": {
           "builder": "@angular/build:unit-test",
