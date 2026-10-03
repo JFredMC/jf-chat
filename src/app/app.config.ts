@@ -8,10 +8,9 @@ import {
 } from '@angular/core';
 import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
+import { backendProviders } from './backend.providers';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthStore } from './core/auth/auth.store';
-import { RealtimeConnection } from './core/realtime/realtime-connection';
-import { SocketIoConnection } from './core/realtime/socket-io-connection';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -20,7 +19,8 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling()),
     // XHR backend (not fetch) so uploads report progress.
     provideHttpClient(withInterceptors([authInterceptor])),
-    { provide: RealtimeConnection, useClass: SocketIoConnection },
+    // Real API + Socket.IO, or the in-browser backend in the demo build.
+    ...backendProviders,
     // Resume the session (refresh token) before the first navigation.
     provideAppInitializer(() => inject(AuthStore).restore()),
   ],

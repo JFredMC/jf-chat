@@ -9,3 +9,9 @@ export const API_URL = new InjectionToken<string>('API_URL', {
 export const IS_DEMO = new InjectionToken<boolean>('IS_DEMO', {
   factory: () => environment.demo,
 });
+
+/** Only in the demo build: controls of the in-browser backend. */
+export interface DemoControls {
+  reset(): void;
+}
+export const DEMO_CONTROLS = new InjectionToken<DemoControls>('DEMO_CONTROLS');

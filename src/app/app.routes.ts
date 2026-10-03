@@ -1,5 +1,20 @@
+import { DOCUMENT } from '@angular/common';
+import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/guards';
+import { IS_DEMO } from './core/config';
+
+/**
+ * With PAGES_MODE=api the demo is a separate build under /jf-chat/demo/.
+ * GitHub Pages sends unknown demo deep links to the root app's 404.html:
+ * hand them over to the demo with a full page load.
+ */
+const openDemoBuild = () => {
+  if (inject(IS_DEMO)) return false;
+  const document = inject(DOCUMENT);
+  document.location.replace(new URL('demo/', document.baseURI).href);
+  return false;
+};
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'chat' },
@@ -27,6 +42,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./features/chat/chat-shell.component').then((m) => m.ChatShellComponent),
   },
+  { path: 'demo', canMatch: [openDemoBuild], children: [] },
   // Old links (the previous version used /login).
   { path: 'login', redirectTo: 'auth/login' },
   {

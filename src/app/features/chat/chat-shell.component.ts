@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { AuthStore } from '../../core/auth/auth.store';
+import { DEMO_CONTROLS } from '../../core/config';
 import { displayName } from '../../core/models';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { ThemeService } from '../../core/ui/theme.service';
@@ -57,6 +58,13 @@ type Tab = 'chats' | 'friends';
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17l5-5-5-5M20 12H9M12 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" stroke-linecap="round" stroke-linejoin="round" /></svg>
           </button>
         </header>
+
+        @if (demo) {
+          <p class="mx-4 mb-2 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950 dark:text-amber-100 dark:ring-amber-900" data-testid="demo-banner">
+            <span class="flex-1"><strong>Demo:</strong> tus amigos son simulados y los datos viven en tu navegador.</span>
+            <button type="button" class="shrink-0 font-semibold underline-offset-2 hover:underline" (click)="resetDemo()">Reiniciar</button>
+          </p>
+        }
 
         <div class="px-4 pb-2" role="tablist" aria-label="Secciones">
           <div class="grid grid-cols-2 rounded-xl bg-gray-100 p-1 text-sm font-medium dark:bg-gray-800">
@@ -134,6 +142,7 @@ export class ChatShellComponent implements OnInit {
   private readonly confirm = inject(ConfirmService);
   private readonly title = inject(Title);
   private readonly document = inject(DOCUMENT);
+  protected readonly demo = inject(DEMO_CONTROLS, { optional: true });
 
   protected readonly tab = signal<Tab>('chats');
   protected readonly filter = signal('');
@@ -180,6 +189,22 @@ export class ChatShellComponent implements OnInit {
   protected async chatWith(friendId: number): Promise<void> {
     await this.store.openWith(friendId);
     this.tab.set('chats');
+  }
+
+  protected async resetDemo(): Promise<void> {
+    const ok = await this.confirm.ask({
+      title: '¿Reiniciar la demo?',
+      text: 'Se borran tus mensajes y cuentas de prueba y vuelves a los datos iniciales.',
+      confirmLabel: 'Reiniciar',
+      danger: true,
+    });
+    if (!ok) return;
+    this.realtime.stop();
+    this.demo?.reset();
+    this.store.reset();
+    this.friends.reset();
+    this.presence.reset();
+    this.auth.logout();
   }
 
   protected async logout(): Promise<void> {

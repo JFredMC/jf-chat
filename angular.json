@@ -65,6 +65,46 @@
               "aot": false,
               "optimization": false,
               "extractLicenses": false
+            },
+            "demo": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "400kB",
+                  "maximumError": "600kB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "4kB",
+                  "maximumError": "8kB"
+                }
+              ],
+              "outputHashing": "all",
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.demo.ts"
+                },
+                {
+                  "replace": "src/app/backend.providers.ts",
+                  "with": "src/app/demo/backend.providers.demo.ts"
+                }
+              ]
+            },
+            "demo-dev": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.demo.ts"
+                },
+                {
+                  "replace": "src/app/backend.providers.ts",
+                  "with": "src/app/demo/backend.providers.demo.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -77,6 +117,9 @@
             },
             "development": {
               "buildTarget": "jf-chat:build:development"
+            },
+            "demo": {
+              "buildTarget": "jf-chat:build:demo-dev"
             }
           },
           "defaultConfiguration": "development"
