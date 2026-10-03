@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, ElementRef, computed, input, output, signal, viewChild } from '@angular/core';
 
 export const MAX_MESSAGE_LENGTH = 4000;
+const TYPING_REPEAT_MS = 4000;
 
 @Component({
   selector: 'app-composer',
@@ -20,6 +21,7 @@ export const MAX_MESSAGE_LENGTH = 4000;
         [attr.maxlength]="max"
         (input)="onInput($event)"
         (keydown)="onKeydown($event)"
+        (paste)="onPaste($event)"
         (blur)="stopTyping()"
         enterkeyhint="send"
         data-testid="composer"
@@ -39,6 +41,8 @@ export class ComposerComponent {
   public readonly disabled = input(false);
   public readonly send = output<string>();
   public readonly typing = output<boolean>();
+  /** Files pasted into the text box (e.g. a screenshot). */
+  public readonly filesPasted = output<File[]>();
 
   protected readonly max = MAX_MESSAGE_LENGTH;
   protected readonly text = signal('');
@@ -49,6 +53,7 @@ export class ComposerComponent {
   private readonly input = viewChild.required<ElementRef<HTMLTextAreaElement>>('input');
   private typingTimer?: ReturnType<typeof setTimeout>;
   private isTyping = false;
+  private typingSentAt = 0;
 
   public focus(): void {
     this.input().nativeElement.focus();
@@ -59,8 +64,10 @@ export class ComposerComponent {
     this.text.set(element.value);
     this.autosize(element);
     if (element.value.trim()) {
-      if (!this.isTyping) {
+      // Repeat "typing" every few seconds: the other side expires it after ~6 s.
+      if (!this.isTyping || Date.now() - this.typingSentAt > TYPING_REPEAT_MS) {
         this.isTyping = true;
+        this.typingSentAt = Date.now();
         this.typing.emit(true);
       }
       clearTimeout(this.typingTimer);
@@ -76,6 +83,13 @@ export class ComposerComponent {
       event.preventDefault();
       this.submit();
     }
+  }
+
+  protected onPaste(event: ClipboardEvent): void {
+    const files = Array.from(event.clipboardData?.files ?? []);
+    if (!files.length) return;
+    event.preventDefault();
+    this.filesPasted.emit(files);
   }
 
   protected submit(): void {

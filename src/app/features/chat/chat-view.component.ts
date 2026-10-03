@@ -30,6 +30,15 @@ import { PresenceStore } from './presence.store';
 
     <app-message-list class="min-h-0 flex-1" [conversation]="conversation()" [thread]="thread()" (loadOlder)="store.loadOlder()" />
 
+    @if (typingLabel()) {
+      <div class="flex items-center gap-2 px-4 pb-2 text-xs text-gray-500 dark:text-gray-400" data-testid="typing-indicator">
+        <span class="flex items-center gap-1 rounded-full bg-white px-3 py-2 shadow-sm dark:bg-gray-800" aria-hidden="true">
+          <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+        </span>
+        <span>{{ typingName() }} está escribiendo…</span>
+      </div>
+    }
+
     <ng-content select="[chatFooter]" />
   `,
 })
@@ -45,6 +54,11 @@ export class ChatViewComponent {
   protected readonly other = computed(() => this.store.otherMember(this.conversation()));
   protected readonly title = computed(() => this.conversation().name || displayName(this.other()?.user));
   protected readonly statusLabel = computed(() => this.presence.label(this.other()?.user_id, this.other()?.user.last_seen));
+  protected readonly typingName = computed(() => {
+    const ids = this.presence.typingIn(this.conversation().id);
+    const member = this.conversation().members.find((m) => m.user_id === ids[0]);
+    return member ? member.user.first_name || member.user.username : 'Alguien';
+  });
   protected readonly typingLabel = computed(() => (this.presence.typingIn(this.conversation().id).length ? 'escribiendo…' : ''));
 
   protected async confirmLeave(): Promise<void> {

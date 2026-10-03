@@ -65,7 +65,9 @@ export class AttachmentViewComponent implements OnInit {
 
   protected open(): void {
     // Open the tab synchronously (popup blockers), then point it to the signed URL.
-    const tab = window.open('', '_blank', 'noopener');
+    // ('noopener' would make window.open return null; cut the opener by hand.)
+    const tab = window.open('', '_blank');
+    if (tab) tab.opener = null;
     this.busy.set(true);
     this.api.attachmentUrl(this.attachment().id).subscribe({
       next: ({ url }) => {

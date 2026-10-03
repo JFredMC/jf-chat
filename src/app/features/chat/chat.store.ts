@@ -129,6 +129,30 @@ export class ChatStore {
     return conversation.members.find((member) => member.user_id !== me) ?? null;
   }
 
+  /** After a reconnection: refresh the list and catch up the open chat. */
+  public async resync(): Promise<void> {
+    await this.load();
+    const id = this.activeId();
+    // Other threads may have missed messages: they reload when opened again.
+    this.threadsState.update((threads) => (id !== null && threads[id] ? { [id]: threads[id] } : {}));
+    if (id === null || !this.threadsState()[id]?.loaded) return;
+    try {
+      const page = await firstValueFrom(this.api.messages(id, undefined, PAGE_SIZE));
+      const thread = this.threadsState()[id];
+      const newestKnown = Math.max(0, ...thread.messages.filter((m) => !m.pending && !m.failed).map((m) => m.id));
+      if (page.hasMore && (page.items[0]?.id ?? 0) > newestKnown) {
+        // Missed more than a page: start over from the newest messages.
+        const unsent = thread.messages.filter((m) => m.pending || m.failed);
+        this.patchThread(id, (t) => ({ ...t, messages: [...page.items.map(toUi), ...unsent], hasMore: true }));
+      } else {
+        page.items.forEach((message) => this.receive(message));
+      }
+      this.markActiveRead();
+    } catch {
+      /* the next reconnection will try again */
+    }
+  }
+
   // --- Messages -------------------------------------------------------------
 
   public async loadOlder(): Promise<void> {

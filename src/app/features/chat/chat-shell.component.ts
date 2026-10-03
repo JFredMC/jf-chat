@@ -11,15 +11,27 @@ import { FriendsStore } from '../friends/friends.store';
 import { ProfileDialogComponent } from '../profile/profile-dialog.component';
 import { ChatViewComponent } from './chat-view.component';
 import { ChatStore } from './chat.store';
+import { AttachmentTrayComponent } from './attachment-tray.component';
 import { ComposerComponent } from './composer.component';
+import { ConnectionBannerComponent } from './connection-banner.component';
 import { ConversationListComponent } from './conversation-list.component';
 import { PresenceStore } from './presence.store';
+import { RealtimeService } from './realtime.service';
 
 type Tab = 'chats' | 'friends';
 
 @Component({
   selector: 'app-chat-shell',
-  imports: [AvatarComponent, ConversationListComponent, FriendsPanelComponent, ChatViewComponent, ComposerComponent, ProfileDialogComponent],
+  imports: [
+    AvatarComponent,
+    ConversationListComponent,
+    FriendsPanelComponent,
+    ChatViewComponent,
+    ComposerComponent,
+    AttachmentTrayComponent,
+    ConnectionBannerComponent,
+    ProfileDialogComponent,
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex h-dvh overflow-hidden bg-white dark:bg-gray-900">
@@ -85,7 +97,19 @@ type Tab = 'chats' | 'friends';
       <main class="min-w-0 flex-1" [class.hidden]="store.activeId() === null" [class.md:block]="true">
         @if (store.active(); as conversation) {
           <app-chat-view [conversation]="conversation" [thread]="store.activeThread()!" (back)="store.select(null)">
-            <app-composer chatFooter (send)="store.send($event)" />
+            <app-attachment-tray chatFooter #tray [conversationId]="conversation.id" />
+            <app-composer
+              chatFooter
+              [hasExtra]="tray.ready().length > 0"
+              [disabled]="tray.busy() || tray.hasErrors()"
+              (send)="send($event, tray)"
+              (typing)="realtime.typing(conversation.id, $event)"
+              (filesPasted)="tray.addFiles($event)"
+            >
+              <button composerStart type="button" class="btn-icon" (click)="tray.pick()" aria-label="Adjuntar archivo" title="Adjuntar archivo" data-testid="attach">
+                <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m21 11.5-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              </button>
+            </app-composer>
           </app-chat-view>
         } @else {
           <div class="hidden h-full flex-col items-center justify-center gap-4 bg-gray-50 p-8 text-center md:flex dark:bg-gray-950">
@@ -96,6 +120,7 @@ type Tab = 'chats' | 'friends';
         }
       </main>
     </div>
+    <app-connection-banner />
     <app-profile-dialog [(open)]="profileOpen" />
   `,
 })
@@ -104,6 +129,7 @@ export class ChatShellComponent implements OnInit {
   protected readonly friends = inject(FriendsStore);
   protected readonly auth = inject(AuthStore);
   protected readonly theme = inject(ThemeService);
+  protected readonly realtime = inject(RealtimeService);
   private readonly presence = inject(PresenceStore);
   private readonly confirm = inject(ConfirmService);
   private readonly title = inject(Title);
@@ -130,12 +156,21 @@ export class ChatShellComponent implements OnInit {
       if (this.document.visibilityState === 'visible') this.store.markActiveRead();
     };
     this.document.addEventListener('visibilitychange', onVisible);
-    inject(DestroyRef).onDestroy(() => this.document.removeEventListener('visibilitychange', onVisible));
+    inject(DestroyRef).onDestroy(() => {
+      this.document.removeEventListener('visibilitychange', onVisible);
+      this.realtime.stop();
+    });
   }
 
   public ngOnInit(): void {
     void this.store.load();
     void this.friends.load();
+    this.realtime.start();
+  }
+
+  protected send(text: string, tray: AttachmentTrayComponent): void {
+    this.store.send(text, tray.ready());
+    tray.clear();
   }
 
   protected open(id: number): void {
@@ -150,6 +185,7 @@ export class ChatShellComponent implements OnInit {
   protected async logout(): Promise<void> {
     const ok = await this.confirm.ask({ title: '¿Cerrar sesión?', text: 'Tendrás que volver a iniciar sesión en este dispositivo.', confirmLabel: 'Cerrar sesión' });
     if (!ok) return;
+    this.realtime.stop();
     this.store.reset();
     this.friends.reset();
     this.presence.reset();
