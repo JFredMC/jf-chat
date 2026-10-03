@@ -5,7 +5,7 @@ import { ToastService } from './toast.service';
   selector: 'app-toasts',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="pointer-events-none fixed inset-x-0 top-3 z-50 flex flex-col items-center gap-2 px-3" aria-live="polite">
+    <div class="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col-reverse items-center gap-2 px-3" aria-live="polite">
       @for (toast of toasts.toasts(); track toast.id) {
         <div
           class="pointer-events-auto flex max-w-md items-start gap-3 rounded-xl px-4 py-3 text-sm shadow-lg ring-1"

@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, type HttpEvent } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../../core/config';
@@ -50,6 +50,16 @@ export class ChatApi {
     const form = new FormData();
     form.append('file', file, file.name);
     return this.http.post<Attachment>(`${this.api}/conversation/${conversationId}/attachments`, form);
+  }
+
+  /** Upload with progress events (for the attachment tray). */
+  public uploadWithProgress(conversationId: number, file: File): Observable<HttpEvent<Attachment>> {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    return this.http.post<Attachment>(`${this.api}/conversation/${conversationId}/attachments`, form, {
+      reportProgress: true,
+      observe: 'events',
+    });
   }
 
   public attachmentUrl(id: number): Observable<{ url: string; expiresIn: number }> {

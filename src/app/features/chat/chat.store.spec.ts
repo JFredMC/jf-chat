@@ -128,6 +128,22 @@ describe('ChatStore', () => {
     expect(store.conversations().some((c) => c.id === 30)).toBe(true);
   });
 
+  it('catches up the open chat after a reconnection', async () => {
+    await store.select(10);
+    api.messages.mockReturnValue(of({ items: [message(2, 10, 2), message(3, 10, 2)], hasMore: false }));
+    await store.resync();
+    expect(store.activeThread()!.messages.map((m) => m.id)).toEqual([1, 2, 3]);
+    expect(api.markRead).toHaveBeenLastCalledWith(10, 3);
+  });
+
+  it('starts over when it missed more than a page', async () => {
+    await store.select(10);
+    api.messages.mockReturnValue(of({ items: [message(50, 10, 2), message(51, 10, 2)], hasMore: true }));
+    await store.resync();
+    expect(store.activeThread()!.messages.map((m) => m.id)).toEqual([50, 51]);
+    expect(store.activeThread()!.hasMore).toBe(true);
+  });
+
   it('forgets everything on reset', async () => {
     await store.select(10);
     store.reset();
