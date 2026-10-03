@@ -144,6 +144,37 @@ describe('ChatStore', () => {
     expect(store.activeThread()!.hasMore).toBe(true);
   });
 
+  it('confirms a message sent before the first page arrived, without duplicates', async () => {
+    const page = new Subject<{ items: Message[]; hasMore: boolean }>();
+    api.messages.mockReturnValue(page);
+    const selecting = store.select(10);
+    store.send('rápido');
+    const optimistic = store.activeThread()!.messages[0];
+    // The acknowledgement arrives first...
+    sent.next(message(3, 10, 1, { content: 'rápido', client_id: optimistic.client_id }));
+    expect(store.activeThread()!.messages[0]).toMatchObject({ id: 3, key: optimistic.key });
+    expect(store.activeThread()!.messages[0].pending).toBeUndefined();
+    // ...then the page, which already includes it.
+    page.next({ items: [message(1, 10, 2), message(2, 10, 2), message(3, 10, 1, { client_id: optimistic.client_id })], hasMore: false });
+    page.complete();
+    await selecting;
+    expect(store.activeThread()!.messages.map((m) => m.id)).toEqual([1, 2, 3]);
+  });
+
+  it('replaces the optimistic copy when the page brings the saved message first', async () => {
+    const page = new Subject<{ items: Message[]; hasMore: boolean }>();
+    api.messages.mockReturnValue(page);
+    const selecting = store.select(10);
+    store.send('rápido');
+    const optimistic = store.activeThread()!.messages[0];
+    page.next({ items: [message(2, 10, 2), message(3, 10, 1, { client_id: optimistic.client_id })], hasMore: false });
+    page.complete();
+    await selecting;
+    const messages = store.activeThread()!.messages;
+    expect(messages.map((m) => m.id)).toEqual([2, 3]);
+    expect(messages[1]).toMatchObject({ key: optimistic.key });
+  });
+
   it('forgets everything on reset', async () => {
     await store.select(10);
     store.reset();

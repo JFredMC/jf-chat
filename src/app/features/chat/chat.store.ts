@@ -211,15 +211,17 @@ export class ChatStore {
     }
     let isNew = false;
     this.patchThread(message.conversation_id, (thread) => {
-      if (!thread.loaded) return thread;
       const index = thread.messages.findIndex(
         (m) => m.id === message.id || (message.client_id !== null && m.client_id === message.client_id),
       );
       if (index >= 0) {
+        // Confirms an optimistic message even before the first page arrives.
         const messages = [...thread.messages];
         messages[index] = { ...toUi(message), key: messages[index].key };
         return { ...thread, messages };
       }
+      // Not loaded yet: the first page will bring it.
+      if (!thread.loaded) return thread;
       isNew = true;
       return { ...thread, messages: insertSorted(thread.messages, toUi(message)) };
     });
@@ -303,8 +305,18 @@ export class ChatStore {
       const page = await firstValueFrom(this.api.messages(id, before, PAGE_SIZE));
       this.patchThread(id, (thread) => {
         const known = new Set(thread.messages.map((m) => m.id));
-        const older = page.items.filter((m) => !known.has(m.id)).map(toUi);
-        return { ...thread, messages: [...older, ...thread.messages], hasMore: page.hasMore, loading: false, loaded: true };
+        const byClientId = new Map(thread.messages.filter((m) => m.client_id).map((m) => [m.client_id, m]));
+        // Optimistic messages the server already saved: keep the server copy, with the same key.
+        const confirmed = new Map<string, UiMessage>();
+        const older: UiMessage[] = [];
+        for (const item of page.items) {
+          if (known.has(item.id)) continue;
+          const optimistic = item.client_id ? byClientId.get(item.client_id) : undefined;
+          if (optimistic) confirmed.set(optimistic.key, { ...toUi(item), key: optimistic.key });
+          else older.push(toUi(item));
+        }
+        const current = thread.messages.map((m) => confirmed.get(m.key) ?? m);
+        return { ...thread, messages: [...older, ...current], hasMore: page.hasMore, loading: false, loaded: true };
       });
     } catch (error) {
       const message = errorMessage(error, 'No se pudieron cargar los mensajes');

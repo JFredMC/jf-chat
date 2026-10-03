@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { errorMessage } from '../../core/api-error';
 import { AuthStore } from '../../core/auth/auth.store';
+import { IS_DEMO } from '../../core/config';
 
 @Component({
   selector: 'app-login-page',
@@ -55,6 +56,12 @@ import { AuthStore } from '../../core/auth/auth.store';
       </button>
     </form>
 
+    @if (isDemo) {
+      <button type="button" class="btn-secondary mt-3 w-full" (click)="demoLogin()" [disabled]="loading()" data-testid="demo-login">
+        Entrar con la cuenta demo
+      </button>
+    }
+
     <p class="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
       ¿No tienes cuenta?
       <a routerLink="/auth/register" class="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Regístrate</a>
@@ -64,6 +71,7 @@ import { AuthStore } from '../../core/auth/auth.store';
 export class LoginPage {
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
+  protected readonly isDemo = inject(IS_DEMO);
 
   /** ?sesion=expirada */
   public readonly sesion = input<string>();
@@ -79,6 +87,11 @@ export class LoginPage {
   protected invalid(name: 'username' | 'password'): boolean {
     const control = this.form.controls[name];
     return control.invalid && control.touched;
+  }
+
+  protected demoLogin(): void {
+    this.form.setValue({ username: 'demo', password: 'Demo1234' });
+    this.submit();
   }
 
   protected submit(): void {
