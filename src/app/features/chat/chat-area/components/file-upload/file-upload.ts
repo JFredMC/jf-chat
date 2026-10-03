@@ -1,10 +1,11 @@
-import { Component, ElementRef, inject, input, output, signal, ViewChild } from "@angular/core";
+import { Component, ElementRef, inject, input, output, signal, ViewChild, ChangeDetectionStrategy } from "@angular/core";
 import { AttachmentService } from "../../../../../services/attachment.service";
 import { IAttachment } from "../../../../../types/attachment.type";
 
 @Component({
   selector: 'app-file-upload',
   templateUrl: './file-upload.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './file-upload.scss'
 })
 export class FileUpload {

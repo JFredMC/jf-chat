@@ -124,7 +124,7 @@
             >
               @if (currentUser()?.avatar_url) {
                 <img 
-                  [src]="currentUser()?.avatar_url" 
+                  [src]="$safeNavigationMigration(currentUser()?.avatar_url)" 
                   [alt]="getDisplayName()"
                   class="w-8 h-8 rounded-full object-cover"
                 >

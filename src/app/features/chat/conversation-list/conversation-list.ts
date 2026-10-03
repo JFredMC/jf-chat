@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 
 import { ConversationService } from '../conversations/services/conversation.service';
 import { AuthService } from '../../../services/auth.service';
@@ -13,6 +13,7 @@ import { IMessage } from '../messages/types/message.type';
   standalone: true,
   imports: [],
   templateUrl: './conversation-list.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './conversation-list.scss'
 })
 export class ConversationList {

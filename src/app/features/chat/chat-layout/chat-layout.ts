@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
 
 import { AuthService } from '../../../services/auth.service';
 import { SweetAlertService } from '../../../services/sweet-alert.service';
@@ -19,6 +19,7 @@ import { IUser } from '../../../types/user';
   selector: 'app-chat-layout',
   imports: [ChatArea, FriendshipDialog, ConversationList],
   templateUrl: './chat-layout.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './chat-layout.scss'
 })
 export class ChatLayout {

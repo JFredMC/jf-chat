@@ -1,5 +1,5 @@
 // chat-actions.component.ts
-import { Component, input, output, inject, signal } from '@angular/core';
+import { Component, input, output, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 
 import { ConversationService } from '../../../conversations/services/conversation.service';
 import { SweetAlertService } from '../../../../../services/sweet-alert.service';
@@ -11,6 +11,7 @@ import { IConversation } from '../../../conversations/types/conversation.type';
   standalone: true,
   imports: [],
   templateUrl: './chat-actions.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './chat-actions.scss'
 })
 export class ChatActions {

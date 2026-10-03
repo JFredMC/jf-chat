@@ -1,11 +1,12 @@
 // 3. Create a Reusable Error Display Component
-import { Component, Input, OnInit, OnDestroy, Inject, signal, inject } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, Inject, signal, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormGroupDirective, ValidationErrors } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { ValidationService } from '../../../services/validators.service';
 
 @Component({
   selector: 'app-control-error',
+  changeDetection: ChangeDetectionStrategy.Eager,
   templateUrl: './control-errors.html',
 })
 export class ControlErrors implements OnInit, OnDestroy {
