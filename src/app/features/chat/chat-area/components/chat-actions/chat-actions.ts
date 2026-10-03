@@ -1,6 +1,6 @@
 // chat-actions.component.ts
-import { Component, input, output, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input, output, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+
 import { ConversationService } from '../../../conversations/services/conversation.service';
 import { SweetAlertService } from '../../../../../services/sweet-alert.service';
 import { IConversation } from '../../../conversations/types/conversation.type';
@@ -9,8 +9,9 @@ import { IConversation } from '../../../conversations/types/conversation.type';
 @Component({
   selector: 'app-chat-actions',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './chat-actions.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './chat-actions.scss'
 })
 export class ChatActions {

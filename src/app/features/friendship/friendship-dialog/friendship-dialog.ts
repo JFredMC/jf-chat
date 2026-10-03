@@ -1,15 +1,16 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, output, signal, ChangeDetectionStrategy } from '@angular/core';
 import { IFriendship } from '../types/friendship.type';
 import { FriendshipService } from '../services/friendship.service';
 import { AuthService } from '../../../services/auth.service';
 import { IUser } from '../../../types/user';
-import { CommonModule } from '@angular/common';
+
 import { UsersService } from '../../user/services/user.service';
 
 @Component({
   selector: 'app-friendship-dialog',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './friendship-dialog.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './friendship-dialog.scss'
 })
 export class FriendshipDialog {

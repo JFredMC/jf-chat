@@ -1,5 +1,5 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, computed, inject, signal, ChangeDetectionStrategy } from '@angular/core';
+
 import { ConversationService } from '../conversations/services/conversation.service';
 import { AuthService } from '../../../services/auth.service';
 import { FriendshipService } from '../../friendship/services/friendship.service';
@@ -11,8 +11,9 @@ import { IMessage } from '../messages/types/message.type';
 @Component({
   selector: 'app-conversation-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './conversation-list.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './conversation-list.scss'
 })
 export class ConversationList {

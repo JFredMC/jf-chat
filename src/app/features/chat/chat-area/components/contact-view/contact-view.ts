@@ -1,12 +1,13 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject, input, output } from '@angular/core';
+
+import { Component, inject, input, output, ChangeDetectionStrategy } from '@angular/core';
 import { FriendshipService } from '../../../../friendship/services/friendship.service';
 import { IUser } from '../../../../../types/user';
 
 @Component({
   selector: 'app-contact-view',
-  imports: [CommonModule],
+  imports: [],
   templateUrl: './contact-view.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './contact-view.scss'
 })
 export class ContactView {

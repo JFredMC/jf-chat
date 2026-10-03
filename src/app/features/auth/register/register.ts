@@ -1,20 +1,19 @@
-import { Component, inject, signal, Signal } from '@angular/core';
+import { Component, inject, signal, Signal, ChangeDetectionStrategy } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ControlErrors } from '../../errors/control-errors/control-errors';
 import { ValidationService } from '../../../services/validators.service';
 import { UsersService } from '../../user/services/user.service';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { SweetAlertService } from '../../../services/sweet-alert.service';
-import { map } from 'rxjs';
 
 @Component({
   selector: 'app-register',
   templateUrl: './register.html',
   styleUrls: ['./register.scss'],
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, RouterLink, ControlErrors]
+  changeDetection: ChangeDetectionStrategy.Eager,
+  imports: [ReactiveFormsModule, RouterLink, ControlErrors]
 })
 export class Register {
   private readonly fb = inject(FormBuilder);
@@ -26,12 +25,6 @@ export class Register {
   public isLoading: Signal<boolean>;
   public isLoadingBtn: Signal<boolean>;
   public showPassword = signal<boolean>(false);
-  public existingUsers = toSignal(
-  this.usersService.getAll().pipe(
-    map(users => users.map(user => user.username))
-  ), 
-    { initialValue: [] }
-  );
 
   constructor() {
     this.isLoading = this.usersService.isLoading;
@@ -40,7 +33,6 @@ export class Register {
       username: ['', [
         Validators.required,
         Validators.minLength(3),
-        this.validationService.existingUserValidator(this.existingUsers)
       ]],
       password: ['', [
         Validators.required, 
@@ -57,7 +49,7 @@ export class Register {
       const { username, password } = this.registerForm.value;
   
       this.usersService.register({ username, password }).subscribe({
-        next: (response) => {
+        next: () => {
           this.sweetAlertService.showAlert(
             $localize`Registro de usuario`,
             $localize`¡Usuario registrado exitosamente!`,

@@ -125,6 +125,12 @@ export class AuthService {
     ).subscribe();
   }
 
+  /** Ends the session locally (expired or invalid token) without calling the API. */
+  public endSession(): void {
+    this.clearAuthData();
+    this.router.navigate(['/auth/login']);
+  }
+
   /**
    * Actualizar perfil de usuario
    */

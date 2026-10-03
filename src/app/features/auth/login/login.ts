@@ -1,7 +1,7 @@
 // login.component.ts
-import { Component, effect, inject, OnInit, signal } from '@angular/core';
+import { Component, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ControlErrors } from '../../errors/control-errors/control-errors';
 import { ValidationService } from '../../../services/validators.service';
@@ -12,7 +12,8 @@ import { SweetAlertService } from '../../../services/sweet-alert.service';
   selector: 'app-login',
   templateUrl: './login.html',
   styleUrls: ['./login.scss'],
-  imports: [CommonModule, ReactiveFormsModule, ControlErrors, RouterLink],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  imports: [ReactiveFormsModule, ControlErrors, RouterLink],
 })
 export class Login {
   private readonly router = inject(Router);
@@ -46,7 +47,7 @@ export class Login {
       const { username, password } = this.form.value;
       if(username && password) {
         this.authService.login({ username, password }).subscribe({
-          next: (response) => {
+          next: () => {
             this.router.navigate(['/chat']);
           },
           error: (error) => {

@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../../services/auth.service';
 import { FriendshipService } from '../../friendship/services/friendship.service';
 import { IUser } from '../../../types/user';
@@ -17,6 +17,7 @@ import { ChatActions } from './components/chat-actions/chat-actions';
   selector: 'app-chat-area',
   templateUrl: './chat-area.html',
   styleUrl: './chat-area.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [MessageBubble, ContactView, ChatActions],
 })
 export class ChatArea {
@@ -47,7 +48,6 @@ export class ChatArea {
   private setupWebSocketConnection(): void {
     const userId = this.currentUser()?.id;
     const token = this.authService.getToken();
-    console.log('Setting up WebSocket connection with userId:', userId, 'and token:', token);
 
     if (userId && token) {
       this.websocketService.connect(userId, token);
@@ -132,9 +132,8 @@ export class ChatArea {
     if ((message || this.attachedFiles().length > 0) && conversation) {
       try {
         // Si hay archivos, subirlos primero
-        let attachmentUrls: string[] = [];
         if (this.attachedFiles().length > 0) {
-          attachmentUrls = await this.uploadFiles(this.attachedFiles());
+          await this.uploadFiles(this.attachedFiles());
         }
 
         const sendMessageData: IMessage = {

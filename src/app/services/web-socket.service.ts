@@ -123,7 +123,6 @@ export class WebsocketService {
       return;
     }
 
-    console.log('Connecting WebSocket with userId:', userId);
     this.socket.auth = { userId, token };
     this.socket.connect();
   }

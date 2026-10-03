@@ -1,5 +1,5 @@
-import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+
 import { AuthService } from '../../../services/auth.service';
 import { SweetAlertService } from '../../../services/sweet-alert.service';
 import { ThemeService } from '../../../services/theme.service';
@@ -7,7 +7,6 @@ import { UsersService } from '../../user/services/user.service';
 import { LanguageService } from '../../../services/language.service';
 import { ChatArea } from '../chat-area/chat-area';
 import { FriendshipDialog } from '../../friendship/friendship-dialog/friendship-dialog';
-import { ChatService } from '../services/chat.service';
 import { ConversationList } from '../conversation-list/conversation-list';
 import { ConversationService } from '../conversations/services/conversation.service';
 import { FriendshipService } from '../../friendship/services/friendship.service';
@@ -17,8 +16,9 @@ import { IUser } from '../../../types/user';
 // chat-layout.ts
 @Component({
   selector: 'app-chat-layout',
-  imports: [CommonModule, ChatArea, FriendshipDialog, ConversationList],
+  imports: [ChatArea, FriendshipDialog, ConversationList],
   templateUrl: './chat-layout.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './chat-layout.scss'
 })
 export class ChatLayout {
@@ -130,10 +130,7 @@ export class ChatLayout {
   }
 
   private startChatWithFriend(friendId: number) {
-    this.conversationService.getOrCreateDirectConversation(friendId).subscribe({
-      next: (conversation) => {
-      },
-    });
+    this.conversationService.getOrCreateDirectConversation(friendId).subscribe();
   }
 
   // Método para seleccionar una conversación existente

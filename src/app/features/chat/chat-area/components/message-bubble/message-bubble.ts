@@ -1,4 +1,4 @@
-import { Component, inject, input } from '@angular/core';
+import { Component, inject, input, ChangeDetectionStrategy } from '@angular/core';
 import { AuthService } from '../../../../../services/auth.service';
 import { FriendshipService } from '../../../../friendship/services/friendship.service';
 import { IMessage } from '../../../messages/types/message.type';
@@ -9,6 +9,7 @@ import { IUser } from '../../../../../types/user';
 @Component({
   selector: 'app-message-bubble',
   templateUrl: './message-bubble.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './message-bubble.scss'
 })
 export class MessageBubble {
