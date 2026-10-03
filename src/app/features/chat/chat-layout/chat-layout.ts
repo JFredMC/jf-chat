@@ -1,5 +1,5 @@
 import { Component, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { AuthService } from '../../../services/auth.service';
 import { SweetAlertService } from '../../../services/sweet-alert.service';
 import { ThemeService } from '../../../services/theme.service';
@@ -17,7 +17,7 @@ import { IUser } from '../../../types/user';
 // chat-layout.ts
 @Component({
   selector: 'app-chat-layout',
-  imports: [CommonModule, ChatArea, FriendshipDialog, ConversationList],
+  imports: [ChatArea, FriendshipDialog, ConversationList],
   templateUrl: './chat-layout.html',
   styleUrl: './chat-layout.scss'
 })

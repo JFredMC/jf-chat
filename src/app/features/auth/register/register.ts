@@ -1,6 +1,6 @@
 import { Component, inject, signal, Signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CommonModule } from '@angular/common';
+
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ControlErrors } from '../../errors/control-errors/control-errors';
 import { ValidationService } from '../../../services/validators.service';
@@ -14,7 +14,7 @@ import { map } from 'rxjs';
   templateUrl: './register.html',
   styleUrls: ['./register.scss'],
   standalone: true,
-  imports: [ReactiveFormsModule, CommonModule, RouterLink, ControlErrors]
+  imports: [ReactiveFormsModule, RouterLink, ControlErrors]
 })
 export class Register {
   private readonly fb = inject(FormBuilder);
