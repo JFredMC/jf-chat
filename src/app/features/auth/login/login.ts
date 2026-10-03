@@ -1,5 +1,5 @@
 // login.component.ts
-import { Component, effect, inject, OnInit, signal, ChangeDetectionStrategy } from '@angular/core';
+import { Component, effect, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -47,7 +47,7 @@ export class Login {
       const { username, password } = this.form.value;
       if(username && password) {
         this.authService.login({ username, password }).subscribe({
-          next: (response) => {
+          next: () => {
             this.router.navigate(['/chat']);
           },
           error: (error) => {

@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ConfigService } from './config.service';
 import { IAttachment } from '../types/attachment.type';
-import { UploadResponse } from '../types/storage.type';
 
 @Injectable({
   providedIn: 'root'
@@ -59,7 +58,7 @@ export class AttachmentService {
   }
 
   // Generar thumbnail URL (si tu backend lo soporta)
-  generateThumbnailUrl(attachment: IAttachment, width: number = 200): string {
+  generateThumbnailUrl(attachment: IAttachment, width = 200): string {
     if (!this.isImageAttachment(attachment)) {
       return attachment.file_url;
     }
@@ -110,7 +109,7 @@ export class AttachmentService {
   getFileIcon(fileName: string): string {
     const extension = fileName.split('.').pop()?.toLowerCase();
     
-    const iconMap: { [key: string]: string } = {
+    const iconMap: Record<string, string> = {
       'pdf': '📄',
       'doc': '📝', 'docx': '📝',
       'xls': '📊', 'xlsx': '📊',

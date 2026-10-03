@@ -48,7 +48,6 @@ export class ChatArea {
   private setupWebSocketConnection(): void {
     const userId = this.currentUser()?.id;
     const token = this.authService.getToken();
-    console.log('Setting up WebSocket connection with userId:', userId, 'and token:', token);
 
     if (userId && token) {
       this.websocketService.connect(userId, token);
@@ -133,9 +132,8 @@ export class ChatArea {
     if ((message || this.attachedFiles().length > 0) && conversation) {
       try {
         // Si hay archivos, subirlos primero
-        let attachmentUrls: string[] = [];
         if (this.attachedFiles().length > 0) {
-          attachmentUrls = await this.uploadFiles(this.attachedFiles());
+          await this.uploadFiles(this.attachedFiles());
         }
 
         const sendMessageData: IMessage = {

@@ -23,8 +23,8 @@ export class SweetAlertService {
   public confirm(
     title: string,
     message: string,
-    confirmText: string = 'Yes',
-    cancelText: string = 'Cancel'
+    confirmText = 'Yes',
+    cancelText = 'Cancel'
   ): Promise<SweetAlertResult> {
     return Swal.fire({
       title: title,
@@ -51,7 +51,7 @@ export class SweetAlertService {
     });
   }
 
-  public loading(title: string = 'Loading...'): void {
+  public loading(title = 'Loading...'): void {
     Swal.fire({
       title: title,
       allowEscapeKey: false,
@@ -66,7 +66,7 @@ export class SweetAlertService {
     message: string,
     icon: SweetAlertIcon = 'success',
     position: 'top' | 'top-start' | 'top-end' | 'center' | 'center-start' | 'center-end' | 'bottom' | 'bottom-start' | 'bottom-end' = 'top-end',
-    timer: number = 3000
+    timer = 3000
   ): void {
     Swal.fire({
       toast: true,

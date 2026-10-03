@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, input, output, signal, ViewChild, ChangeDetectionStrategy } from "@angular/core";
+import { Component, ElementRef, inject, input, output, signal, ViewChild, ChangeDetectionStrategy, OnDestroy } from "@angular/core";
 import { AttachmentService } from "../../../../../services/attachment.service";
 import { IAttachment } from "../../../../../types/attachment.type";
 
@@ -8,7 +8,7 @@ import { IAttachment } from "../../../../../types/attachment.type";
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './file-upload.scss'
 })
-export class FileUpload {
+export class FileUpload implements OnDestroy {
   public readonly attachmentService = inject(AttachmentService);
 
   // Inputs

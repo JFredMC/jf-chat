@@ -1,5 +1,4 @@
-import { Component, computed, inject, ChangeDetectionStrategy } from '@angular/core';
-import { AuthService } from '../../services/auth.service';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-user',

@@ -57,26 +57,6 @@ export class UsersService {
   });
 
   /**
-   * Obtener todos los usuarios
-  */
-  public getAll(): Observable<IUser[]> {
-    this.isLoadingBtn.set(true);
-
-    return this.http.get<IUser[]>(this.urlApi).pipe(
-      tap((response) => {
-        return response;
-      }),
-      catchError((error) => {
-        const errorMessage = this.getErrorMessage(error);
-        return throwError(() => errorMessage);
-      }),
-      finalize(() => {
-        this.isLoadingBtn.set(false);
-      })
-    );
-  }
-
-  /**
    * Registrar usuario
   */
   public register(user: IUser): Observable<IUser> {
@@ -84,11 +64,9 @@ export class UsersService {
 
     return this.http.post<IUser>(this.urlApi, user).pipe(
       tap((response) => {
-        console.log('register response: ', response);
         return response;
       }),
       catchError((error) => {
-        console.log('register error: ', error);
         const errorMessage = this.getErrorMessage(error);
         return throwError(() => errorMessage);
       }),
