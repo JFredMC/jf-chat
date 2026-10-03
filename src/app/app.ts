@@ -1,13 +1,20 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { ConfirmDialogComponent } from './core/ui/confirm-dialog.component';
+import { ThemeService } from './core/ui/theme.service';
+import { ToastsComponent } from './core/ui/toasts.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
-  templateUrl: './app.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
-  styleUrl: './app.scss'
+  imports: [RouterOutlet, ToastsComponent, ConfirmDialogComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <router-outlet />
+    <app-toasts />
+    <app-confirm-dialog />
+  `,
 })
 export class App {
-  protected title = $localize`JfChat`;
+  // Applies the saved theme on startup.
+  private readonly theme = inject(ThemeService);
 }

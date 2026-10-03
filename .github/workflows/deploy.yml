@@ -1,5 +1,13 @@
 name: Deploy to GitHub Pages
 
+# Publishes https://jfredmc.github.io/jf-chat/ on every push to main.
+#
+# Repository variable PAGES_MODE (Settings → Secrets and variables → Actions):
+#   demo (default) → the demo (in-browser backend, no server) at the root.
+#   api            → the real app (jf-chat-be API) at the root and the demo
+#                    under /jf-chat/demo/. Switch only after the new API is
+#                    deployed (see jf-chat-be/docs/DESPLIEGUE.md).
+
 on:
   push:
     branches: ['main']
@@ -15,6 +23,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PAGES_MODE: ${{ vars.PAGES_MODE || 'demo' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -31,17 +42,14 @@ jobs:
       - name: Lint and unit tests
         run: yarn lint && yarn test
 
-      - name: Build app
-        run: yarn build --configuration production --base-href /jf-chat/
-
-      - name: SPA fallback (404.html)
-        run: cp dist/jf-chat/browser/index.html dist/jf-chat/browser/404.html
+      - name: Build for GitHub Pages (${{ env.PAGES_MODE }})
+        run: yarn build:pages
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
-          path: dist/jf-chat/browser
+          path: dist/pages
 
   deploy:
     needs: build
