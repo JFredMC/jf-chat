@@ -448,6 +448,10 @@ test('photos are only visible while held: canvas with a watermark, nothing to sa
   expect(await canvas.evaluate((c) => c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })))).toBe(false);
   await expect(viewer.locator('img, a[href]')).toHaveCount(0);
 
+  // Still open (and no error) a moment later, until released.
+  await page.waitForTimeout(700);
+  await expect(viewer).toBeVisible();
+  await expect(page.getByText('No se pudo abrir')).toHaveCount(0);
   await page.mouse.up();
   await expect(viewer).toHaveCount(0);
 });
@@ -540,7 +544,8 @@ test('content-free notifications: preview with only a code; the demo sends none'
   await page.getByTestId('open-profile').click();
   const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
   await expect(dialog.getByTestId('push-preview')).toContainText(/^\s*\d{6}\s*Así se ve un aviso\s*$/);
-  await dialog.getByTestId('push-toggle').click();
   await expect(dialog.getByTestId('push-hint')).toContainText('en la demo no se envían');
+  await dialog.getByTestId('push-toggle').click();
   await expect(dialog.getByTestId('push-toggle')).not.toBeChecked();
+  await expect(dialog.getByTestId('push-hint')).toContainText('en la demo no se envían');
 });

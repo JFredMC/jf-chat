@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { API_URL } from '../config';
+import { API_URL, IS_DEMO } from '../config';
 
 export type PushState = 'unsupported' | 'unavailable' | 'denied' | 'off' | 'on' | 'busy';
 
@@ -24,6 +24,7 @@ export function base64UrlToBytes(value: string): Uint8Array<ArrayBuffer> {
 export class PushNotificationsService {
   private readonly http = inject(HttpClient);
   private readonly api = inject(API_URL);
+  private readonly demo = inject(IS_DEMO);
   public readonly state = signal<PushState>('off');
 
   public supported(): boolean {
@@ -32,6 +33,7 @@ export class PushNotificationsService {
 
   /** Reads the current state (permission + existing subscription). */
   public async refresh(): Promise<void> {
+    if (this.demo) return this.state.set('unavailable');
     if (!this.supported()) return this.state.set('unsupported');
     if (Notification.permission === 'denied') return this.state.set('denied');
     const registration = await navigator.serviceWorker.getRegistration();

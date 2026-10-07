@@ -69,7 +69,7 @@ type Tab = 'chats' | 'friends';
             </button>
           }
           <button type="button" class="btn-icon text-rose-500" (click)="panicNow()" aria-label="Pánico: salir y borrar este dispositivo" title="Pánico (o pulsa Esc tres veces)" data-testid="panic">
-            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.8.8-2.9 1.6-3.8C10 9.5 11 7 12 3Z" stroke-linejoin="round" /><path d="M12 21v-2" stroke-linecap="round" /></svg>
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v8" stroke-linecap="round" /><path d="M6.3 6.8a8 8 0 1 0 11.4 0" stroke-linecap="round" /></svg>
           </button>
           <button type="button" class="btn-icon" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión" data-testid="logout">
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17l5-5-5-5M20 12H9M12 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" stroke-linecap="round" stroke-linejoin="round" /></svg>

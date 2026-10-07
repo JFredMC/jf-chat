@@ -37,9 +37,10 @@ export class ShieldService {
     const onKey = (event: KeyboardEvent) => {
       if (isPrintShortcut(event)) {
         event.preventDefault();
-        this.toast.info('Imprimir está desactivado en Velo');
+        if (event.type === 'keydown' && !event.repeat) this.toast.info('Imprimir está desactivado en Velo');
         return;
       }
+      // Windows only reports PrintScreen on keyup: listen to both.
       if (isScreenshotShortcut(event)) this.flash();
     };
     view.addEventListener('blur', hide);

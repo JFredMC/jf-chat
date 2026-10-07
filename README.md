@@ -12,6 +12,20 @@ Hecho con **Angular 22** (signals, zoneless) y **NestJS + Socket.IO + PostgreSQL
 [![CI](https://github.com/JFredMC/jf-chat/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/JFredMC/jf-chat/actions/workflows/ci.yml)
 [![Deploy](https://github.com/JFredMC/jf-chat/actions/workflows/deploy.yml/badge.svg)](https://github.com/JFredMC/jf-chat/actions/workflows/deploy.yml)
 
+| Chat | Foto: solo mientras la sostienes | Bloqueo con PIN | Efímeros |
+|---|---|---|---|
+| <img src="docs/screenshots/movil-chat.webp" alt="Chat con burbujas, cita y cuenta atrás" width="200"> | <img src="docs/screenshots/movil-foto-marca-de-agua.webp" alt="Foto con marca de agua del usuario que mira" width="200"> | <img src="docs/screenshots/movil-bloqueo-pin.webp" alt="Pantalla de bloqueo con PIN" width="200"> | <img src="docs/screenshots/movil-efimeros.webp" alt="Menú de mensajes temporales y ver una vez" width="200"> |
+
+<details>
+<summary>Escritorio</summary>
+
+![Chat en escritorio](docs/screenshots/escritorio-chat.webp)
+![Perfil del contacto con «Autodestruir el chat»](docs/screenshots/escritorio-perfil-pareja.webp)
+![Contactos con código de invitación](docs/screenshots/escritorio-contactos.webp)
+![PIN y avisos discretos](docs/screenshots/movil-pin-avisos.webp)
+
+</details>
+
 ## Privacidad, una por una
 
 | | Qué hace |

@@ -220,7 +220,9 @@ export class SecureMediaComponent {
       if (!ctx) return;
       ctx.drawImage(image, 0, 0, box.width, box.height);
       drawWatermark(ctx, box.width, box.height, this.stamp(), ratio);
-      image.src = '';
+      // Drop the decoded image (clearing src would fire onerror otherwise).
+      image.onload = image.onerror = null;
+      image.removeAttribute('src');
       this.loading.set(false);
     };
     image.onerror = () => {
