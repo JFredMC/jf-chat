@@ -1,6 +1,6 @@
 import type { AuthSession, Conversation, Friendship, Message } from '../core/models';
 import type { ServerEvent } from '../core/realtime/realtime-connection';
-import { DEMO_PASSWORD, STORAGE_KEY } from './demo-db';
+import { DEMO_CODES, DEMO_PASSWORD, STORAGE_KEY } from './demo-db';
 import { DemoHttpError, DemoServer } from './demo-server';
 
 describe('DemoServer (in-browser API)', () => {
@@ -33,7 +33,7 @@ describe('DemoServer (in-browser API)', () => {
     expect(session.user.username).toBe('demo');
     expect(session.accessToken).toMatch(/^demo\.\d+\./);
     expect(error(() => login('demo', 'nope'))).toMatchObject({ status: 401, message: 'Usuario o contraseña incorrectos' });
-    expect(error(() => login('laura.mendez'))).toMatchObject({ status: 401 });
+    expect(error(() => login('luna'))).toMatchObject({ status: 401 });
   });
 
   it('requires a token for private endpoints', () => {
@@ -51,22 +51,22 @@ describe('DemoServer (in-browser API)', () => {
     expect(error(() => call('POST', '/auth/register', { username: 'demo', password: 'Secreta123' }))).toMatchObject({ status: 409 });
     expect(error(() => call('POST', '/auth/register', { username: 'x', password: 'Secreta123' }))).toMatchObject({ status: 400 });
     expect(error(() => call('POST', '/auth/register', { username: 'nuevo', password: 'debil' }))).toMatchObject({ status: 400 });
-    const session = call('POST', '/auth/register', { username: 'Nuevo', password: 'Secreta123', first_name: ' Ana ' }).body as AuthSession;
-    expect(session.user).toMatchObject({ username: 'nuevo', first_name: 'Ana' });
+    const session = call('POST', '/auth/register', { username: 'Nuevo', password: 'Secreta123' }).body as AuthSession;
+    expect(session.user.username).toBe('nuevo');
+    expect(session.user).not.toHaveProperty('first_name');
     expect(call('GET', '/auth/username-available', null, null, 'username=nuevo').body).toEqual({ available: false });
-    // A welcome friend request from Laura.
-    const friendships = call('GET', '/friendship', null, session.accessToken).body as Friendship[];
-    expect(friendships).toEqual([expect.objectContaining({ status: 'pending', direction: 'incoming' })]);
+    // Nobody can find a new account: it starts without contacts.
+    expect(call('GET', '/friendship', null, session.accessToken).body).toEqual([]);
     expect(localStorage.getItem(STORAGE_KEY)).toContain('"nuevo"');
   });
 
   it('lists the seeded conversations with unread counts, newest first data', () => {
     const { accessToken } = login();
     const conversations = call('GET', '/conversation', null, accessToken).body as Conversation[];
-    expect(conversations).toHaveLength(3);
-    const laura = conversations.find((c) => c.members.some((m) => m.user.username === 'laura.mendez'))!;
-    expect(laura.unread_count).toBe(2);
-    expect(laura.last_message?.content).toContain('respuestas automáticas');
+    expect(conversations).toHaveLength(1);
+    const luna = conversations.find((c) => c.members.some((m) => m.user.username === 'luna'))!;
+    expect(luna.unread_count).toBe(2);
+    expect(luna.last_message?.content).toContain('te contesto');
   });
 
   it('pages messages chronologically with hasMore', () => {
@@ -98,16 +98,16 @@ describe('DemoServer (in-browser API)', () => {
     expect(error(() => call('POST', `/conversation/${conversation.id}/messages`, { content: '   ' }, accessToken))).toMatchObject({ status: 400 });
   });
 
-  it('simulated friends deliver, read, type and answer over the realtime channel', async () => {
+  it('simulated contacts deliver, read, type and answer over the realtime channel', async () => {
     server.speed = 0.01;
     const session = login();
     const me = session.user.id;
     const conversations = call('GET', '/conversation', null, session.accessToken).body as Conversation[];
-    const laura = conversations.find((c) => c.members.some((m) => m.user.username === 'laura.mendez'))!;
+    const luna = conversations.find((c) => c.members.some((m) => m.user.username === 'luna'))!;
     const events: ServerEvent[] = [];
     const subscription = server.eventsFor(me).subscribe((event) => events.push(event));
     server.connect(me);
-    const ack = server.socket(me, 'send_message', { conversationId: laura.id, content: 'Hola Laura', client_id: 'x1' });
+    const ack = server.socket(me, 'send_message', { conversationId: luna.id, content: 'Hola Luna', client_id: 'x1' });
     expect(ack.ok).toBe(true);
     await vi.runAllTimersAsync();
     subscription.unsubscribe();
@@ -115,20 +115,54 @@ describe('DemoServer (in-browser API)', () => {
     expect(types).toEqual(
       expect.arrayContaining(['presence_snapshot', 'new_message', 'conversation_delivered', 'conversation_read', 'typing']),
     );
-    const page = call('GET', `/conversation/${laura.id}/messages`, null, session.accessToken).body as { items: Message[] };
-    expect(page.items.at(-1)?.content).toContain('¡Hola, Invitado!');
+    const page = call('GET', `/conversation/${luna.id}/messages`, null, session.accessToken).body as { items: Message[] };
+    expect(page.items.at(-1)?.content).toContain('Hola, demo');
   });
 
-  it('accepts friend requests on behalf of simulated people', async () => {
+  it('connects only through single-use invite codes (no user search)', async () => {
     server.speed = 0.01;
     const { accessToken } = login();
-    const [valentina] = call('GET', '/user/search', null, accessToken, 'q=valen').body as { id: number }[];
-    const request = call('POST', '/friendship/request', { friendId: valentina.id }, accessToken).body as Friendship;
-    expect(request).toMatchObject({ status: 'pending', direction: 'outgoing' });
+    expect(error(() => call('GET', '/user/search', null, accessToken, 'q=sol'))).toMatchObject({ status: 404 });
+    const added = call('POST', '/friendship/invite', { code: DEMO_CODES.sol.toLowerCase() }, accessToken).body as Friendship;
+    expect(added).toMatchObject({ status: 'accepted', direction: 'incoming', friend: expect.objectContaining({ username: 'sol' }) });
+    expect(error(() => call('POST', '/friendship/invite', { code: DEMO_CODES.sol }, accessToken))).toMatchObject({ status: 409 });
+    expect(error(() => call('POST', '/friendship/invite', { code: 'ZZZZ-ZZZZ-ZZ' }, accessToken))).toMatchObject({ status: 404 });
+    // Sol says hello in a new chat.
     await vi.runAllTimersAsync();
-    const friendships = call('GET', '/friendship', null, accessToken).body as Friendship[];
-    expect(friendships.find((f) => f.id === request.id)?.status).toBe('accepted');
-    expect(error(() => call('POST', '/friendship/request', { friendId: valentina.id }, accessToken))).toMatchObject({ status: 409 });
+    const conversations = call('GET', '/conversation', null, accessToken).body as Conversation[];
+    expect(conversations.some((c) => c.members.some((m) => m.user.username === 'sol'))).toBe(true);
+
+    // A person's code works once and then rotates; your own code is rejected like an unknown one.
+    const { code } = call('GET', '/auth/me/invite', null, accessToken).body as { code: string };
+    expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}$/);
+    expect(error(() => call('POST', '/friendship/invite', { code }, accessToken))).toMatchObject({ status: 404 });
+    const other = call('POST', '/auth/register', { username: 'otra', password: 'Secreta123' }).body as AuthSession;
+    expect(error(() => call('GET', '/user/' + other.user.id, null, accessToken))).toMatchObject({ status: 404 });
+    call('POST', '/friendship/invite', { code }, other.accessToken);
+    // Used up: the same code no longer exists.
+    expect(error(() => call('POST', '/friendship/invite', { code }, other.accessToken))).toMatchObject({ status: 404 });
+    const next = call('GET', '/auth/me/invite', null, accessToken).body as { code: string };
+    expect(next.code).not.toBe(code);
+    expect(call('GET', '/user/' + other.user.id, null, accessToken).body).toMatchObject({ username: 'otra' });
+    const rotated = call('POST', '/auth/me/invite/rotate', null, accessToken).body as { code: string };
+    expect(rotated.code).not.toBe(next.code);
+  });
+
+  it('hides last seen and typing when the user asks for it', async () => {
+    const session = login();
+    const luna = (call('GET', '/friendship', null, session.accessToken).body as Friendship[])[0].friend;
+    const lunaEvents: ServerEvent[] = [];
+    const subscription = server.eventsFor(luna.id).subscribe((event) => lunaEvents.push(event));
+    server.connect(session.user.id);
+    const updated = call('PATCH', '/auth/me', { hide_last_seen: true, hide_typing: true }, session.accessToken).body as { hide_last_seen: boolean };
+    expect(updated.hide_last_seen).toBe(true);
+    const [conversation] = call('GET', '/conversation', null, session.accessToken).body as Conversation[];
+    server.socket(session.user.id, 'typing', { conversationId: conversation.id, isTyping: true });
+    await vi.advanceTimersByTimeAsync(0);
+    subscription.unsubscribe();
+    expect(lunaEvents.some((e) => e.type === 'typing')).toBe(false);
+    expect(lunaEvents.filter((e) => e.type === 'presence').at(-1)).toMatchObject({ data: { online: false, lastSeen: null } });
+    expect(error(() => call('PATCH', '/auth/me', { first_name: 'Ana' }, session.accessToken))).toMatchObject({ status: 400 });
   });
 
   it('sets a status and avatar, validates them and tells the user and contacts', async () => {

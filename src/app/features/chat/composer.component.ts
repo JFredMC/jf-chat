@@ -26,7 +26,7 @@ const TYPING_REPEAT_MS = 4000;
         enterkeyhint="send"
         data-testid="composer"
       ></textarea>
-      <button type="submit" class="btn-icon bg-gradient-to-br from-blue-600 to-violet-600 text-white hover:text-white disabled:opacity-40" [disabled]="!canSend()" aria-label="Enviar mensaje" data-testid="send">
+      <button type="submit" class="btn-icon bg-gradient-to-br from-cyan-500 to-indigo-500 text-white hover:text-white disabled:opacity-40" [disabled]="!canSend()" aria-label="Enviar mensaje" data-testid="send">
         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="currentColor" aria-hidden="true"><path d="M3.4 20.4 21 12 3.4 3.6l-.01 6.53L15 12 3.39 13.87z" /></svg>
       </button>
     </form>

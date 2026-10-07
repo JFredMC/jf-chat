@@ -45,7 +45,13 @@ describe('RealtimeService', () => {
   const presence = { apply: vi.fn(), setTyping: vi.fn(), clearTyping: vi.fn() };
   const incoming = signal<unknown[]>([]);
   const friendsList = signal<unknown[]>([]);
-  const friends = { load: vi.fn(async () => incoming.set([{}])), incoming, friends: friendsList, patchUser: vi.fn() };
+  const friends = {
+    load: vi.fn(async () => incoming.set([{}])),
+    incoming,
+    friends: friendsList,
+    patchUser: vi.fn(),
+    refreshInviteIfLoaded: vi.fn(async () => undefined),
+  };
   const patchSelf = vi.fn();
   const api = { send: vi.fn() };
   const toast = { info: vi.fn(), success: vi.fn(), error: vi.fn() };
@@ -53,6 +59,7 @@ describe('RealtimeService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     incoming.set([]);
+    friendsList.set([]);
     connection = new FakeConnection();
     TestBed.configureTestingModule({
       providers: [
@@ -122,7 +129,21 @@ describe('RealtimeService', () => {
 
   it('announces new friend requests', async () => {
     connection.subject.next({ type: 'friendship_updated', data: { friendshipId: 3, status: 'pending' } });
-    await vi.waitFor(() => expect(toast.info).toHaveBeenCalledWith('Tienes una nueva solicitud de amistad'));
+    await vi.waitFor(() => expect(toast.info).toHaveBeenCalledWith('Tienes una solicitud de contacto pendiente'));
+  });
+
+  it('tells the invite owner that someone used the code, and refreshes it', async () => {
+    friends.load.mockImplementationOnce(async () => friendsList.set([{ id: 7, direction: 'outgoing' }]));
+    connection.subject.next({ type: 'friendship_updated', data: { friendshipId: 7, status: 'accepted' } });
+    await vi.waitFor(() => expect(toast.success).toHaveBeenCalledWith('Alguien usó tu código. ¡Ya pueden chatear!'));
+    expect(friends.refreshInviteIfLoaded).toHaveBeenCalled();
+  });
+
+  it('does not repeat the toast for whoever redeemed the code', async () => {
+    friends.load.mockImplementationOnce(async () => friendsList.set([{ id: 8, direction: 'incoming' }]));
+    connection.subject.next({ type: 'friendship_updated', data: { friendshipId: 8, status: 'accepted' } });
+    await vi.waitFor(() => expect(friends.load).toHaveBeenCalled());
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it('sends over the socket with acknowledgement', async () => {

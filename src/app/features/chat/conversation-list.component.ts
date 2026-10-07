@@ -30,7 +30,7 @@ import { PresenceStore } from './presence.store';
         } @else {
           <span class="text-4xl" aria-hidden="true">💬</span>
           <p>Aún no tienes conversaciones.</p>
-          <button type="button" class="btn-primary" (click)="findFriends.emit()">Busca amigos para chatear</button>
+          <button type="button" class="btn-primary" (click)="findFriends.emit()">Conecta con un código</button>
         }
       </div>
     } @else {

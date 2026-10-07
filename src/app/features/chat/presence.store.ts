@@ -38,11 +38,13 @@ export class PresenceStore implements OnDestroy {
     return this.presence()[userId]?.online ?? false;
   }
 
-  public label(userId: number | undefined, fallbackLastSeen?: string | null): string {
+  public label(userId: number | undefined, fallbackLastSeen?: string | null, hidden = false): string {
     this.minute();
     if (userId === undefined) return '';
     const entry = this.presence()[userId];
     if (entry?.online) return 'en línea';
+    // They chose to hide it: say so instead of a misleading "desconectado".
+    if (hidden) return 'última conexión oculta';
     return lastSeenLabel(entry?.lastSeen ?? fallbackLastSeen);
   }
 

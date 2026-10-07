@@ -43,7 +43,7 @@ describe('AuthStore + authInterceptor', () => {
     await login();
     expect(store.user()?.username).toBe('ana');
     expect(store.token()).toBe('access-1');
-    expect(localStorage.getItem('jfchat.refresh')).toBe('refresh-1');
+    expect(localStorage.getItem('velo.session')).toBe('refresh-1');
     expect(JSON.stringify(localStorage)).not.toContain('access-1');
   });
 
@@ -74,7 +74,7 @@ describe('AuthStore + authInterceptor', () => {
     retryA.flush('A');
     retryB.flush('B');
     expect(await Promise.all([a, b])).toEqual(['A', 'B']);
-    expect(localStorage.getItem('jfchat.refresh')).toBe('refresh-2');
+    expect(localStorage.getItem('velo.session')).toBe('refresh-2');
   });
 
   it('ends the session and redirects when the refresh token is rejected', async () => {
@@ -84,7 +84,7 @@ describe('AuthStore + authInterceptor', () => {
     http.expectOne(`${API}/auth/refresh`).flush(null, { status: 401, statusText: 'Unauthorized' });
     await expect(request).rejects.toBeTruthy();
     expect(store.user()).toBeNull();
-    expect(localStorage.getItem('jfchat.refresh')).toBeNull();
+    expect(localStorage.getItem('velo.session')).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { queryParams: { sesion: 'expirada' } });
   });
 
@@ -94,17 +94,19 @@ describe('AuthStore + authInterceptor', () => {
     http.expectOne(`${API}/a`).flush(null, { status: 401, statusText: 'Unauthorized' });
     http.expectOne(`${API}/auth/refresh`).error(new ProgressEvent('error'));
     await expect(request).rejects.toBeTruthy();
-    expect(localStorage.getItem('jfchat.refresh')).toBe('refresh-1');
+    expect(localStorage.getItem('velo.session')).toBe('refresh-1');
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('restores the session from the stored refresh token', async () => {
+  it('restores the session from a token saved before the Velo rename (and moves it)', async () => {
     localStorage.setItem('jfchat.refresh', 'refresh-9');
     const restored = store.restore();
     http.expectOne(`${API}/auth/refresh`).flush(session(user(1, 'ana'), 10));
     await restored;
     expect(store.isAuthenticated()).toBe(true);
     expect(store.token()).toBe('access-10');
+    expect(localStorage.getItem('jfchat.refresh')).toBeNull();
+    expect(localStorage.getItem('velo.session')).toBe('refresh-10');
   });
 
   it('revokes the refresh token on logout', async () => {

@@ -20,7 +20,7 @@ import { MessageStatusComponent } from './message-status.component';
         class="relative rounded-2xl px-3 py-2 text-[0.94rem] leading-snug shadow-sm"
         [class]="
           mine()
-            ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white ' + (first() ? 'rounded-tr-md' : '')
+            ? 'bg-gradient-to-br from-cyan-500 to-indigo-500 text-white ' + (first() ? 'rounded-tr-md' : '')
             : 'bg-white text-gray-900 ring-1 ring-gray-900/5 dark:bg-gray-800 dark:text-gray-100 dark:ring-white/5 ' + (first() ? 'rounded-tl-md' : '')
         "
         [class.opacity-70]="message().pending"

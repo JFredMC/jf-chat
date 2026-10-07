@@ -54,7 +54,7 @@ const COLORS = [
 })
 export class AvatarComponent {
   private readonly api = inject(API_URL);
-  public readonly user = input.required<Pick<User, 'id' | 'username' | 'first_name' | 'last_name'> & Partial<Pick<User, 'avatar_url'>> | null | undefined>();
+  public readonly user = input.required<Pick<User, 'id' | 'username'> & Partial<Pick<User, 'avatar_url'>> | null | undefined>();
   public readonly size = input(40);
   /** null hides the dot. */
   public readonly online = input<boolean | null>(null);

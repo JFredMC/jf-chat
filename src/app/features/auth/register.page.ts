@@ -16,24 +16,13 @@ const STRENGTH_COLOR = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Crea tu cuenta</h1>
-    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Solo toma un momento.</p>
+    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Solo un usuario y una contraseña. Sin nombre, sin correo, sin teléfono.</p>
 
     @if (error()) {
       <p class="mt-4 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-200" role="alert">{{ error() }}</p>
     }
 
     <form class="mt-6 space-y-4" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label class="label" for="first_name">Nombre <span class="font-normal text-gray-400">(opcional)</span></label>
-          <input id="first_name" class="input" formControlName="first_name" autocomplete="given-name" maxlength="100" />
-        </div>
-        <div>
-          <label class="label" for="last_name">Apellido <span class="font-normal text-gray-400">(opcional)</span></label>
-          <input id="last_name" class="input" formControlName="last_name" autocomplete="family-name" maxlength="100" />
-        </div>
-      </div>
-
       <div>
         <label class="label" for="username">Usuario</label>
         <input id="username" class="input" formControlName="username" autocomplete="username" autocapitalize="none" spellcheck="false"
@@ -46,7 +35,7 @@ const STRENGTH_COLOR = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-
           } @else if (form.controls.username.valid) {
             <span class="text-emerald-600 dark:text-emerald-400">✓ Disponible</span>
           } @else {
-            3 a 30 caracteres: letras minúsculas, números, punto o guion bajo.
+            3 a 30 caracteres: minúsculas, números, punto o guion bajo. Mejor si no revela quién eres.
           }
         </p>
       </div>
@@ -95,8 +84,6 @@ export class RegisterPage {
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly form = inject(FormBuilder).nonNullable.group({
-    first_name: [''],
-    last_name: [''],
     username: ['', [Validators.required, usernameFormat], [usernameAvailable((name) => this.auth.isUsernameAvailable(name))]],
     password: ['', [Validators.required, strongPassword]],
     confirm: ['', [Validators.required, sameAs('password')]],
@@ -133,14 +120,9 @@ export class RegisterPage {
     if (this.form.invalid || this.form.pending || this.loading()) return;
     this.loading.set(true);
     this.error.set(null);
-    const { username, password, first_name, last_name } = this.form.getRawValue();
+    const { username, password } = this.form.getRawValue();
     this.auth
-      .register({
-        username: username.trim().toLowerCase(),
-        password,
-        first_name: first_name.trim() || undefined,
-        last_name: last_name.trim() || undefined,
-      })
+      .register({ username: username.trim().toLowerCase(), password })
       .subscribe({
         next: () => void this.router.navigate(['/chat']),
         error: (error: unknown) => {

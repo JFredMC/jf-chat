@@ -5,7 +5,9 @@ import { AuthStore } from '../../core/auth/auth.store';
 import { DEMO_CONTROLS } from '../../core/config';
 import { displayName } from '../../core/models';
 import { ConfirmService } from '../../core/ui/confirm.service';
+import { BrandService } from '../../core/ui/brand.service';
 import { ThemeService } from '../../core/ui/theme.service';
+import { BrandLogoComponent, JfredMarkComponent } from '../../shared/brand.component';
 import { AvatarComponent } from '../../shared/avatar.component';
 import { FriendsPanelComponent } from '../friends/friends-panel.component';
 import { FriendsStore } from '../friends/friends.store';
@@ -26,6 +28,8 @@ type Tab = 'chats' | 'friends';
   selector: 'app-chat-shell',
   imports: [
     AvatarComponent,
+    BrandLogoComponent,
+    JfredMarkComponent,
     ConversationListComponent,
     FriendsPanelComponent,
     ChatViewComponent,
@@ -43,7 +47,7 @@ type Tab = 'chats' | 'friends';
         class="flex w-full min-w-0 flex-col border-r border-gray-200 md:w-[22rem] md:shrink-0 lg:w-96 dark:border-gray-800"
         [class.hidden]="store.activeId() !== null"
         [class.md:flex]="true"
-        aria-label="Chats y amigos"
+        aria-label="Chats y contactos"
       >
         <header class="flex items-center gap-3 px-4 pt-4 pb-3">
           <button type="button" class="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left" (click)="profileOpen.set(true)" aria-label="Mi perfil: cambiar foto y estado" title="Mi perfil" data-testid="open-profile">
@@ -63,7 +67,7 @@ type Tab = 'chats' | 'friends';
 
         @if (demo) {
           <p class="mx-4 mb-2 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900 ring-1 ring-amber-200 dark:bg-amber-950 dark:text-amber-100 dark:ring-amber-900" data-testid="demo-banner">
-            <span class="flex-1"><strong>Demo:</strong> tus amigos son simulados y los datos viven en tu navegador.</span>
+            <span class="flex-1"><strong>Demo:</strong> tu pareja es simulada y todo vive en tu navegador. Prueba el código <code class="font-semibold" data-testid="demo-code">{{ demoCode }}</code> en Contactos.</span>
             <button type="button" class="shrink-0 font-semibold underline-offset-2 hover:underline" (click)="resetDemo()">Reiniciar</button>
           </p>
         }
@@ -81,7 +85,7 @@ type Tab = 'chats' | 'friends';
             <button type="button" role="tab" id="tab-friends" aria-controls="panel-friends" [attr.aria-selected]="tab() === 'friends'"
               class="flex items-center justify-center gap-2 rounded-lg py-2 transition" [class]="tab() === 'friends' ? 'bg-white shadow-sm dark:bg-gray-900' : 'text-gray-500'"
               (click)="tab.set('friends')" data-testid="tab-friends">
-              Amigos
+              Contactos
               @if (friends.incoming().length) {
                 <span class="rounded-full bg-rose-500 px-1.5 text-xs leading-5 text-white" [attr.aria-label]="friends.incoming().length + ' solicitudes'">{{ friends.incoming().length }}</span>
               }
@@ -135,9 +139,10 @@ type Tab = 'chats' | 'friends';
           </app-chat-view>
         } @else {
           <div class="hidden h-full flex-col items-center justify-center gap-4 bg-gray-50 p-8 text-center md:flex dark:bg-gray-950">
-            <div class="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-violet-600 text-3xl font-bold text-white shadow-lg shadow-indigo-500/30" aria-hidden="true">JF</div>
-            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Bienvenido a JfChat</h1>
-            <p class="max-w-sm text-sm text-gray-500 dark:text-gray-400">Elige una conversación o busca a un amigo para empezar a chatear.</p>
+            <app-brand-logo [size]="80" class="rounded-3xl shadow-lg shadow-cyan-500/20" />
+            <h1 class="text-xl font-semibold text-gray-900 dark:text-white">{{ brand.name() }}</h1>
+            <p class="max-w-sm text-sm text-gray-500 dark:text-gray-400">Elige una conversación. Todo lo que se dicen aquí se autodestruye en 24 horas.</p>
+            <app-jfred-mark class="mt-4" />
           </div>
         }
       </main>
@@ -156,8 +161,11 @@ export class ChatShellComponent implements OnInit {
   private readonly presence = inject(PresenceStore);
   private readonly confirm = inject(ConfirmService);
   private readonly title = inject(Title);
+  protected readonly brand = inject(BrandService);
   private readonly document = inject(DOCUMENT);
   protected readonly demo = inject(DEMO_CONTROLS, { optional: true });
+  /** Sol's invite code (src/app/demo/demo-db.ts), kept literal so the real app never imports the demo. */
+  protected readonly demoCode = 'SOLE-DEMO-26';
 
   protected readonly tab = signal<Tab>('chats');
   protected readonly filter = signal('');
@@ -168,7 +176,9 @@ export class ChatShellComponent implements OnInit {
   public constructor() {
     effect(() => {
       const unread = this.store.totalUnread();
-      this.title.setTitle(unread ? `(${unread}) JfChat` : 'JfChat');
+      // Disguised: never hint at unread messages in the tab.
+      const name = this.brand.name();
+      this.title.setTitle(unread && !this.brand.disguised() ? `(${unread}) ${name}` : name);
     });
     effect(() => {
       // Seed presence from the REST data until the realtime updates arrive.

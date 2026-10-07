@@ -26,19 +26,18 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'login' },
       {
         path: 'login',
-        title: 'Iniciar sesión · JfChat',
+        title: 'Iniciar sesión',
         loadComponent: () => import('./features/auth/login.page').then((m) => m.LoginPage),
       },
       {
         path: 'register',
-        title: 'Crear cuenta · JfChat',
+        title: 'Crear cuenta',
         loadComponent: () => import('./features/auth/register.page').then((m) => m.RegisterPage),
       },
     ],
   },
   {
     path: 'chat',
-    title: 'JfChat',
     canActivate: [authGuard],
     loadComponent: () => import('./features/chat/chat-shell.component').then((m) => m.ChatShellComponent),
   },
@@ -47,7 +46,7 @@ export const routes: Routes = [
   { path: 'login', redirectTo: 'auth/login' },
   {
     path: '**',
-    title: 'Página no encontrada · JfChat',
+    title: 'Página no encontrada',
     loadComponent: () => import('./features/not-found.page').then((m) => m.NotFoundPage),
   },
 ];

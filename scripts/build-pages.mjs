@@ -8,7 +8,7 @@
 // GitHub Pages has no SPA rewrites: 404.html (a copy of index.html) lets deep
 // links boot the app. .nojekyll disables Jekyll processing.
 import { execSync } from 'node:child_process';
-import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const mode = process.env.PAGES_MODE || 'demo';
@@ -20,9 +20,20 @@ const root = new URL('..', import.meta.url).pathname;
 const built = join(root, 'dist/jf-chat/browser');
 const out = join(root, 'dist/pages');
 
+// The CSP in src/index.html also allows the local API for development;
+// what is published must not.
+function hardenCsp(file) {
+  const html = readFileSync(file, 'utf8');
+  const strict = html.replace(/ (?:https?|wss?):\/\/localhost:\d+/g, '');
+  const csp = /http-equiv="Content-Security-Policy"\s+content="([^"]+)"/.exec(strict)?.[1];
+  if (!csp || /localhost/.test(csp)) throw new Error(`CSP missing or still allowing localhost in ${file}`);
+  writeFileSync(file, strict);
+}
+
 function build(configuration, baseHref, target) {
   execSync(`npx ng build --configuration ${configuration} --base-href ${baseHref}`, { cwd: root, stdio: 'inherit' });
   cpSync(built, target, { recursive: true });
+  hardenCsp(join(target, 'index.html'));
 }
 
 rmSync(out, { recursive: true, force: true });
