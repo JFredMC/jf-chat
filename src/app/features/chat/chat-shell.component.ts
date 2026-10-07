@@ -4,6 +4,9 @@ import { Title } from '@angular/platform-browser';
 import { AuthStore } from '../../core/auth/auth.store';
 import { DEMO_CONTROLS } from '../../core/config';
 import { displayName } from '../../core/models';
+import { PanicService } from '../../core/privacy/panic.service';
+import { PinLockService } from '../../core/privacy/pin-lock.service';
+import { PushNotificationsService } from '../../core/privacy/push.service';
 import { ConfirmService } from '../../core/ui/confirm.service';
 import { BrandService } from '../../core/ui/brand.service';
 import { ThemeService } from '../../core/ui/theme.service';
@@ -59,6 +62,14 @@ type Tab = 'chats' | 'friends';
           </button>
           <button type="button" class="btn-icon" (click)="theme.toggle()" [attr.aria-label]="theme.isDark() ? 'Usar tema claro' : 'Usar tema oscuro'">
             {{ theme.isDark() ? '☀️' : '🌙' }}
+          </button>
+          @if (pinLock.enabled()) {
+            <button type="button" class="btn-icon" (click)="pinLock.lock()" aria-label="Bloquear ahora" title="Bloquear ahora" data-testid="lock-now">
+              <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke-linecap="round" /></svg>
+            </button>
+          }
+          <button type="button" class="btn-icon text-rose-500" (click)="panicNow()" aria-label="Pánico: salir y borrar este dispositivo" title="Pánico (o pulsa Esc tres veces)" data-testid="panic">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3c1 3 4 4.5 4 8.5a4 4 0 0 1-8 0c0-1.8.8-2.9 1.6-3.8C10 9.5 11 7 12 3Z" stroke-linejoin="round" /><path d="M12 21v-2" stroke-linecap="round" /></svg>
           </button>
           <button type="button" class="btn-icon" (click)="logout()" aria-label="Cerrar sesión" title="Cerrar sesión" data-testid="logout">
             <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 17l5-5-5-5M20 12H9M12 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7" stroke-linecap="round" stroke-linejoin="round" /></svg>
@@ -138,7 +149,7 @@ type Tab = 'chats' | 'friends';
               (typing)="realtime.typing(conversation.id, $event)"
               (filesPasted)="tray.addFiles($event)"
             >
-              <button composerStart type="button" class="btn-icon" (click)="tray.pick()" aria-label="Adjuntar archivo" title="Adjuntar archivo" data-testid="attach">
+              <button composerStart type="button" class="btn-icon" (click)="tray.pick()" aria-label="Adjuntar foto o video" title="Adjuntar foto o video" data-testid="attach">
                 <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m21 11.5-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l7.9-7.9" stroke-linecap="round" stroke-linejoin="round" /></svg>
               </button>
             </app-composer>
@@ -169,6 +180,9 @@ export class ChatShellComponent implements OnInit {
   private readonly title = inject(Title);
   protected readonly brand = inject(BrandService);
   private readonly document = inject(DOCUMENT);
+  protected readonly pinLock = inject(PinLockService);
+  private readonly panic = inject(PanicService);
+  private readonly push = inject(PushNotificationsService);
   protected readonly demo = inject(DEMO_CONTROLS, { optional: true });
   /** Sol's invite code (src/app/demo/demo-db.ts), kept literal so the real app never imports the demo. */
   protected readonly demoCode = 'SOLE-DEMO-26';
@@ -209,9 +223,19 @@ export class ChatShellComponent implements OnInit {
       if (this.document.visibilityState === 'visible') this.store.markActiveRead();
     };
     this.document.addEventListener('visibilitychange', onVisible);
+    // Panic shortcut: Escape three times within a second and a half.
+    let escapes: number[] = [];
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      const now = Date.now();
+      escapes = [...escapes.filter((t) => now - t < 1500), now];
+      if (escapes.length >= 3) void this.panicNow();
+    };
+    this.document.addEventListener('keydown', onKey, true);
     inject(DestroyRef).onDestroy(() => {
       clearInterval(clock);
       this.document.removeEventListener('visibilitychange', onVisible);
+      this.document.removeEventListener('keydown', onKey, true);
       this.realtime.stop();
     });
   }
@@ -252,9 +276,19 @@ export class ChatShellComponent implements OnInit {
     this.auth.logout();
   }
 
+  /** No confirmation on purpose: it has to be instant. */
+  protected async panicNow(): Promise<void> {
+    this.realtime.stop();
+    this.store.reset();
+    this.friends.reset();
+    this.presence.reset();
+    await this.panic.wipe();
+  }
+
   protected async logout(): Promise<void> {
     const ok = await this.confirm.ask({ title: '¿Cerrar sesión?', text: 'Tendrás que volver a iniciar sesión en este dispositivo.', confirmLabel: 'Cerrar sesión' });
     if (!ok) return;
+    await Promise.race([this.push.disable().catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 800))]);
     this.realtime.stop();
     this.store.reset();
     this.friends.reset();

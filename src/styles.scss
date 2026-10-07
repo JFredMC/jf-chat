@@ -144,3 +144,30 @@
   animation: flash-quote 1.2s ease-out;
   border-radius: 1rem;
 }
+
+/* Velo cannot be printed: the page prints as a single line of text. */
+@media print {
+  body > * {
+    display: none !important;
+  }
+  body::after {
+    content: "Velo no se puede imprimir.";
+    display: block;
+    padding: 2rem;
+    font: 600 16px Inter, system-ui, sans-serif;
+    color: #000;
+  }
+}
+
+/* Photos and videos: no long-press menu, selection or dragging. */
+.secure-media,
+.secure-media * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.privacy-overlay::backdrop {
+  backdrop-filter: blur(24px);
+}

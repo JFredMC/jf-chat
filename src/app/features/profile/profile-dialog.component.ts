@@ -7,11 +7,12 @@ import { BrandService } from '../../core/ui/brand.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AVATAR_ACCEPT, avatarFileError, cropAvatar } from '../../shared/avatar-image';
 import { AvatarComponent } from '../../shared/avatar.component';
+import { SecuritySettingsComponent } from './security-settings.component';
 import { sameAs, strongPassword } from '../auth/validators';
 
 @Component({
   selector: 'app-profile-dialog',
-  imports: [ReactiveFormsModule, AvatarComponent],
+  imports: [ReactiveFormsModule, AvatarComponent, SecuritySettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <dialog
@@ -109,6 +110,8 @@ import { sameAs, strongPassword } from '../auth/validators';
             <input type="checkbox" class="switch" [checked]="brand.disguised()" (change)="brand.setDisguised($any($event.target).checked)" data-testid="disguise" />
           </label>
         </section>
+
+        <app-security-settings class="block space-y-8" />
 
         <form class="space-y-4 border-t border-gray-200 pt-6 dark:border-gray-800" [formGroup]="password" (ngSubmit)="changePassword()">
           <h3 class="font-semibold">Cambiar contraseña</h3>

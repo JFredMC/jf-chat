@@ -291,7 +291,7 @@ export class ChatStore {
       sender_id: me.id,
       sender: me,
       content: text,
-      message_type: attachments.length ? (attachments.every((a) => a.is_image) ? 'image' : 'file') : 'text',
+      message_type: attachments.length ? (attachments.every((a) => a.is_image) ? 'image' : attachments.every((a) => a.is_video) ? 'video' : 'file') : 'text',
       reply_to_id: replyTo?.id ?? null,
       reply_to: replyTo ? { id: replyTo.id, sender_id: replyTo.sender_id, content: replyTo.content, message_type: replyTo.message_type } : null,
       created_at: new Date().toISOString(),

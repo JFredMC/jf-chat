@@ -7,9 +7,12 @@ import { ToastService } from '../../core/ui/toast.service';
 import { fileSizeLabel } from '../../shared/time';
 import { ChatApi } from './chat.api';
 
-/** Same rules as the API (file-validation.ts). */
-export const MAX_FILE_BYTES = 10 * 1024 * 1024;
-export const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf', 'text/plain'];
+/** Same rules as the API (file-validation.ts): only photos and videos. */
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+export const VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+export const ACCEPTED_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES];
 export const MAX_FILES = 5;
 
 interface DraftFile {
@@ -26,9 +29,10 @@ interface DraftFile {
 
 /** Validates a file before uploading; returns the problem in Spanish or null. */
 export function fileProblem(file: Pick<File, 'type' | 'size' | 'name'>): string | null {
-  if (!ACCEPTED_TYPES.includes(file.type)) return `«${file.name}»: solo imágenes (JPG, PNG, GIF, WebP), PDF o texto`;
+  if (!ACCEPTED_TYPES.includes(file.type)) return `«${file.name}»: solo fotos (JPG, PNG, GIF, WebP) o videos (MP4, MOV, WebM)`;
   if (file.size === 0) return `«${file.name}» está vacío`;
-  if (file.size > MAX_FILE_BYTES) return `«${file.name}» supera el máximo de 10 MB`;
+  const video = VIDEO_TYPES.includes(file.type);
+  if (file.size > (video ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES)) return `«${file.name}» supera el máximo de ${video ? '25' : '10'} MB`;
   return null;
 }
 
@@ -46,9 +50,9 @@ export function fileProblem(file: Pick<File, 'type' | 'size' | 'name'>): string 
         @for (file of files(); track file.key) {
           <li class="relative flex w-44 shrink-0 items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 dark:border-gray-700 dark:bg-gray-800" [class.border-red-400]="file.error">
             @if (file.preview) {
-              <img [src]="file.preview" alt="" class="h-10 w-10 rounded-lg object-cover" />
+              <img [src]="file.preview" alt="" draggable="false" class="h-10 w-10 rounded-lg object-cover blur-[2px]" />
             } @else {
-              <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-xl dark:bg-gray-900" aria-hidden="true">📄</span>
+              <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-xl dark:bg-gray-900" aria-hidden="true">🎬</span>
             }
             <span class="min-w-0 flex-1 text-xs">
               <span class="block truncate font-medium text-gray-800 dark:text-gray-100">{{ file.name }}</span>
