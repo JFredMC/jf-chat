@@ -55,6 +55,9 @@ interface Envelope {
 }
 
 const USERNAME_PATTERN = /^[a-z0-9._]{3,30}$/;
+/** Same defaults as the API: MESSAGE_RETENTION=24h, VIEW_ONCE_TTL=30s. */
+export const RETENTION_MS = 24 * 60 * 60_000;
+export const VIEW_ONCE_MS = 30_000;
 const PAGE_LIMIT = 50;
 const MAX_MESSAGE = 4000;
 
@@ -81,11 +84,13 @@ export class DemoServer {
   private readonly blobUrls = new Map<number, string>();
   private readonly replyTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
   private readonly replyCounters = new Map<number, number>();
+  private purgeTimer?: ReturnType<typeof setTimeout>;
 
   /** Multiplies every simulated delay (0 in unit tests). */
   public speed = 1;
 
   public constructor() {
+    this.purge();
     this.save();
   }
 
@@ -124,6 +129,7 @@ export class DemoServer {
   }
 
   public socket<K extends keyof ClientEvents>(userId: number, event: K, payload: ClientEvents[K]): Ack {
+    this.purge();
     try {
       switch (event) {
         case 'send_message': {
@@ -163,6 +169,8 @@ export class DemoServer {
     const { method, path } = request;
     const body = (request.body ?? {}) as Record<string, unknown>;
     const route = `${method} ${path}`;
+    // Like the API's purge job: nothing past its deadline is ever served.
+    this.purge();
     let match: RegExpExecArray | null;
 
     // Public endpoints
@@ -203,6 +211,10 @@ export class DemoServer {
     if (route === 'POST /conversation/direct') return { status: 201, body: this.openDirect(me, Number(body['friendId'])) };
     if ((match = /^GET \/conversation\/(\d+)$/.exec(route))) {
       return { status: 200, body: this.conversationView(this.activeConversation(me, Number(match[1])), me) };
+    }
+    if ((match = /^POST \/conversation\/(\d+)\/destroy$/.exec(route))) {
+      this.destroy(me, Number(match[1]));
+      return { status: 204, body: null };
     }
     if ((match = /^DELETE \/conversation\/(\d+)$/.exec(route))) {
       this.leave(me, Number(match[1]));
@@ -264,8 +276,21 @@ export class DemoServer {
   public reset(): void {
     for (const timers of this.replyTimers.values()) timers.forEach(clearTimeout);
     this.replyTimers.clear();
+    clearTimeout(this.purgeTimer);
     this.db = seedDb();
     this.save();
+  }
+
+  /**
+   * Destroys what is past its deadline (own expiry or the 24 h retention),
+   * with its files, and tells the members, like the API's purge job.
+   */
+  public purge(now = Date.now()): void {
+    const expired = this.db.messages.filter(
+      (m) => (m.expires_at && new Date(m.expires_at).getTime() <= now) || new Date(m.created_at).getTime() + RETENTION_MS <= now,
+    );
+    if (expired.length) this.deleteMessages(expired);
+    this.schedulePurge(now);
   }
 
   // --- Auth -------------------------------------------------------------------
@@ -468,6 +493,15 @@ export class DemoServer {
       if (existing) return { message: this.messageView(existing), created: false };
     }
     const content = typeof body['content'] === 'string' ? body['content'].trim() : '';
+    const replyToId = typeof body['reply_to_id'] === 'number' ? body['reply_to_id'] : null;
+    if (replyToId !== null && !this.db.messages.some((m) => m.id === replyToId && m.conversation_id === conversationId)) {
+      throw new DemoHttpError(400, 'El mensaje al que respondes no existe o ya se autodestruyó');
+    }
+    const expiresIn = body['expires_in'];
+    if (expiresIn !== undefined && (typeof expiresIn !== 'number' || expiresIn < 10 || expiresIn > 86400)) {
+      throw new DemoHttpError(400, 'expires_in debe estar entre 10 y 86400 segundos');
+    }
+    const viewOnce = body['view_once'] === true;
     const attachmentIds = Array.isArray(body['attachment_ids']) ? (body['attachment_ids'] as number[]) : [];
     if (content.length > MAX_MESSAGE) throw new DemoHttpError(400, `El mensaje no puede superar ${MAX_MESSAGE} caracteres`);
     if (!content && !attachmentIds.length) throw new DemoHttpError(400, 'El mensaje no puede estar vacío');
@@ -480,11 +514,13 @@ export class DemoServer {
       conversation_id: conversationId,
       sender_id: me,
       content,
-      message_type: attachments.length ? (attachments.every((a) => a!.is_image) ? 'image' : 'file') : 'text',
-      reply_to_id: null,
+      message_type: attachments.length ? (attachments.every((a) => a!.is_image) ? 'image' : attachments.every((a) => a!.is_video) ? 'video' : 'file') : 'text',
+      reply_to_id: replyToId,
       client_id: clientId,
       created_at: new Date().toISOString(),
       attachment_ids: attachmentIds,
+      expires_at: typeof expiresIn === 'number' ? new Date(Date.now() + expiresIn * 1000).toISOString() : null,
+      view_once: viewOnce,
     };
     attachments.forEach((a) => (a!.message_id = message.id));
     this.db.messages.push(message);
@@ -500,6 +536,7 @@ export class DemoServer {
       }
     }
     this.save();
+    if (message.expires_at) this.schedulePurge();
     const view = this.messageView(message);
     this.emitTo(this.memberIds(conversation), { type: 'new_message', data: view });
     for (const other of this.otherMemberIds(conversation, me)) {
@@ -521,7 +558,73 @@ export class DemoServer {
       this.save();
       this.emitTo(this.memberIds(conversation), { type: 'conversation_read', data: { conversationId, userId: me, lastReadMessageId: read } });
     }
+    this.startViewOnceTimers(me, conversation, read);
     return read;
+  }
+
+  /** Read view-once messages get a 30 s deadline, announced to both. */
+  private startViewOnceTimers(reader: number, conversation: DbConversation, upTo: number): void {
+    const deadline = new Date(Date.now() + VIEW_ONCE_MS).toISOString();
+    const opened = this.db.messages.filter(
+      (m) => m.conversation_id === conversation.id && m.view_once && !m.expires_at && m.sender_id !== reader && m.id <= upTo,
+    );
+    if (!opened.length) return;
+    opened.forEach((m) => (m.expires_at = deadline));
+    this.save();
+    this.schedulePurge();
+    this.emitTo(this.memberIds(conversation), {
+      type: 'messages_expiring',
+      data: { conversationId: conversation.id, items: opened.map((m) => ({ id: m.id, expires_at: deadline })) },
+    });
+  }
+
+  /** «Autodestruir»: messages, files and the chat itself, for both members. */
+  private destroy(me: number, id: number): void {
+    const conversation = this.db.conversations.find((c) => c.id === id && c.members.some((m) => m.user_id === me));
+    if (!conversation) throw new DemoHttpError(404, 'Conversación no encontrada');
+    for (const message of this.db.messages.filter((m) => m.conversation_id === id)) this.forgetFiles(message);
+    this.db.attachments.filter((a) => a.conversation_id === id).forEach((a) => this.revokeBlob(a.id));
+    this.db.attachments = this.db.attachments.filter((a) => a.conversation_id !== id);
+    this.db.messages = this.db.messages.filter((m) => m.conversation_id !== id);
+    this.db.conversations = this.db.conversations.filter((c) => c.id !== id);
+    for (const member of conversation.members) this.cancel(`reply-${id}-${member.user_id}`);
+    this.save();
+    this.emitTo(this.memberIds(conversation), { type: 'conversation_destroyed', data: { conversationId: id } });
+  }
+
+  private deleteMessages(messages: DbMessage[]): void {
+    const ids = new Set(messages.map((m) => m.id));
+    messages.forEach((m) => this.forgetFiles(m));
+    this.db.messages = this.db.messages.filter((m) => !ids.has(m.id));
+    // Like ON DELETE SET NULL on reply_to_id.
+    for (const m of this.db.messages) if (m.reply_to_id !== null && ids.has(m.reply_to_id)) m.reply_to_id = null;
+    this.save();
+    const byConversation = new Map<number, number[]>();
+    for (const m of messages) byConversation.set(m.conversation_id, [...(byConversation.get(m.conversation_id) ?? []), m.id]);
+    for (const [conversationId, list] of byConversation) {
+      const conversation = this.db.conversations.find((c) => c.id === conversationId);
+      if (conversation) this.emitTo(this.memberIds(conversation), { type: 'messages_deleted', data: { conversationId, ids: list } });
+    }
+  }
+
+  private forgetFiles(message: DbMessage): void {
+    for (const id of message.attachment_ids) this.revokeBlob(id);
+    const files = new Set(message.attachment_ids);
+    this.db.attachments = this.db.attachments.filter((a) => !files.has(a.id));
+  }
+
+  private revokeBlob(id: number): void {
+    const blob = this.blobUrls.get(id);
+    if (blob) URL.revokeObjectURL(blob);
+    this.blobUrls.delete(id);
+  }
+
+  /** One timer, set for the nearest explicit deadline (ephemeral or view-once). */
+  private schedulePurge(now = Date.now()): void {
+    clearTimeout(this.purgeTimer);
+    const next = this.db.messages.reduce((min, m) => (m.expires_at ? Math.min(min, new Date(m.expires_at).getTime()) : min), Infinity);
+    if (next === Infinity) return;
+    this.purgeTimer = setTimeout(() => this.purge(), Math.max(0, next - now) + 50);
   }
 
   private markDelivered(me: number, conversationId: number, messageId?: number): number {
@@ -560,9 +663,7 @@ export class DemoServer {
     const attachment = this.db.attachments.find((a) => a.id === id && a.uploader_id === me && a.message_id === null);
     if (!attachment) throw new DemoHttpError(404, 'Archivo no encontrado');
     this.db.attachments = this.db.attachments.filter((a) => a.id !== id);
-    const blob = this.blobUrls.get(id);
-    if (blob) URL.revokeObjectURL(blob);
-    this.blobUrls.delete(id);
+    this.revokeBlob(id);
     this.save();
   }
 
@@ -759,10 +860,12 @@ export class DemoServer {
       })),
       last_message: last ? this.messageView(last) : null,
       unread_count: messages.filter((m) => m.sender_id !== me && m.id > (mine?.last_read_message_id ?? 0)).length,
+      retention_seconds: RETENTION_MS / 1000,
     };
   }
 
   private messageView(m: DbMessage): Message {
+    const quoted = m.reply_to_id === null ? undefined : this.db.messages.find((r) => r.id === m.reply_to_id);
     return {
       id: m.id,
       conversation_id: m.conversation_id,
@@ -771,8 +874,11 @@ export class DemoServer {
       content: m.content,
       message_type: m.message_type,
       reply_to_id: m.reply_to_id,
+      reply_to: quoted ? { id: quoted.id, sender_id: quoted.sender_id, content: quoted.content, message_type: quoted.message_type } : null,
       client_id: m.client_id,
       created_at: m.created_at,
+      expires_at: m.expires_at ?? null,
+      view_once: !!m.view_once,
       attachments: m.attachment_ids
         .map((id) => this.db.attachments.find((a) => a.id === id))
         .filter((a): a is DbAttachment => !!a)
@@ -781,7 +887,15 @@ export class DemoServer {
   }
 
   private attachmentView(a: DbAttachment): Attachment {
-    return { id: a.id, message_id: a.message_id, file_name: a.file_name, file_type: a.file_type, file_size: a.file_size, is_image: a.is_image };
+    return {
+      id: a.id,
+      message_id: a.message_id,
+      file_name: a.file_name,
+      file_type: a.file_type,
+      file_size: a.file_size,
+      is_image: a.is_image,
+      is_video: !!a.is_video,
+    };
   }
 
   private activeConversation(me: number, id: number): DbConversation {

@@ -20,8 +20,14 @@ export interface ServerEvents {
   presence_snapshot: PresenceUpdate[];
   presence: PresenceUpdate;
   friendship_updated: { friendshipId: number; status: string };
-  /** Someone (or you) changed their photo, name or personal status. */
+  /** Someone (or you) changed their photo, personal status or privacy switches. */
   user_updated: User;
+  /** View-once messages were opened: they now have a deadline. */
+  messages_expiring: { conversationId: number; items: { id: number; expires_at: string }[] };
+  /** The server destroyed these messages (expired, or older than 24 h). */
+  messages_deleted: { conversationId: number; ids: number[] };
+  /** One of the two pressed «Autodestruir»: the whole chat is gone. */
+  conversation_destroyed: { conversationId: number };
   session_expired: { message: string };
 }
 
@@ -33,6 +39,10 @@ export interface SendMessagePayload {
   client_id?: string;
   reply_to_id?: number;
   attachment_ids?: number[];
+  /** Ephemeral: destroyed this many seconds after sending (10–86400). */
+  expires_in?: number;
+  /** Destroyed shortly after the recipient opens it. */
+  view_once?: boolean;
 }
 
 export interface ClientEvents {

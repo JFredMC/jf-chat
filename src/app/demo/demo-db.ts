@@ -50,11 +50,14 @@ export interface DbMessage {
   conversation_id: number;
   sender_id: number;
   content: string;
-  message_type: 'text' | 'image' | 'file';
+  message_type: 'text' | 'image' | 'video' | 'file';
   reply_to_id: number | null;
   client_id: string | null;
   created_at: string;
   attachment_ids: number[];
+  /** Ephemeral deadline (or view-once deadline once read). */
+  expires_at?: string | null;
+  view_once?: boolean;
 }
 
 export interface DbAttachment {
@@ -66,6 +69,7 @@ export interface DbAttachment {
   file_type: string;
   file_size: number;
   is_image: boolean;
+  is_video?: boolean;
   /** Small files are kept as data URLs so they survive a reload. */
   data_url: string | null;
 }
@@ -82,7 +86,7 @@ export interface DemoDb {
   refreshTokens: Record<string, number>;
 }
 
-export const DB_VERSION = 3;
+export const DB_VERSION = 4;
 export const STORAGE_KEY = 'velo.demo.db';
 /** Before the Velo rename; dropped on load. */
 const LEGACY_STORAGE_KEY = 'jfchat.demo.db';
@@ -216,11 +220,17 @@ export function seedDb(now = Date.now()): DemoDb {
       [luna, 'Te guardé un abrazo largo para esta noche', 60 * 5 - 3],
       [me, 'Lo cobro sin falta 😌', 60 * 5 - 4],
       [luna, 'Recuerda que aquí todo se borra solo en 24 horas', 40],
-      [luna, 'Escríbeme algo y te contesto 😉', 39],
+      [luna, 'Y este, en una hora ⏱', 39],
+      [luna, 'Escríbeme algo y te contesto 😉', 38],
     ],
     false,
     true,
   );
+  // A reply with its quote, and an ephemeral message with a visible countdown.
+  const hug = db.messages.find((m) => m.content.startsWith('Te guardé'))!;
+  db.messages.find((m) => m.content.startsWith('Lo cobro'))!.reply_to_id = hug.id;
+  const ephemeral = db.messages.find((m) => m.content.startsWith('Y este'))!;
+  ephemeral.expires_at = new Date(new Date(ephemeral.created_at).getTime() + 60 * 60_000).toISOString();
   db.seq = seq;
   return db;
 }

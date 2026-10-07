@@ -109,6 +109,15 @@ export class RealtimeService {
         this.friends.patchUser(event.data);
         if (event.data.id === me) this.auth.patchSelf(event.data);
         break;
+      case 'messages_expiring':
+        this.chat.applyExpiring(event.data.conversationId, event.data.items);
+        break;
+      case 'messages_deleted':
+        this.chat.applyDeleted(event.data.conversationId, event.data.ids);
+        break;
+      case 'conversation_destroyed':
+        this.chat.applyDestroyed(event.data.conversationId);
+        break;
       case 'session_expired':
         break;
     }

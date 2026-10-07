@@ -48,14 +48,14 @@ test('the demo account has a chat with history, unread messages and presence', a
   await expect(page.getByTestId('demo-banner')).toContainText('pareja es simulada');
 
   const luna = page.getByTestId('conversation-item').filter({ hasText: 'luna' });
-  await expect(luna.getByTestId('unread-badge')).toHaveText('2');
-  await expect(page).toHaveTitle('(2) Velo');
+  await expect(luna.getByTestId('unread-badge')).toHaveText('3');
+  await expect(page).toHaveTitle('(3) Velo');
   await expect(luna.getByTestId('presence-dot')).toBeVisible();
   await expect(page.getByTestId('conversation-item')).toHaveCount(1);
 
   await openChat(page, 'luna');
   await expect(page.getByTestId('chat-status')).toHaveText('en línea');
-  await expect(page.getByTestId('message').filter({ hasText: 'abrazo largo' })).toBeVisible();
+  await expect(page.getByTestId('message').filter({ hasText: 'abrazo largo' }).first()).toBeVisible();
   await expect(page).toHaveTitle('Velo');
   await backToList(page);
   await expect(luna.getByTestId('unread-badge')).toHaveCount(0);
@@ -317,4 +317,93 @@ test('a strict CSP is in place and nothing breaks under it', async ({ page }) =>
   expect(csp).toContain("script-src 'self'");
   expect(csp).toContain("object-src 'none'");
   expect(violations).toEqual([]);
+});
+
+test('bubbles: grouped with a tail on the last one, quotes and a live countdown', async ({ page }) => {
+  await loginAsDemo(page);
+  await openChat(page, 'luna');
+  await expect(page.getByTestId('retention-note')).toContainText('24 horas');
+  const quote = page.getByTestId('message').filter({ hasText: 'Lo cobro' }).getByTestId('reply-quote');
+  await expect(quote).toContainText('abrazo largo');
+  const ephemeral = page.getByTestId('message').filter({ hasText: 'Y este, en una hora' });
+  await expect(ephemeral.getByTestId('countdown')).toHaveText(/⏱ \d{1,2}:\d{2}/);
+  const before = await ephemeral.getByTestId('countdown').textContent();
+  await expect(ephemeral.getByTestId('countdown')).not.toHaveText(before!, { timeout: 3000 });
+  // Three in a row from luna: only the last one has the tail.
+  const run = page.getByTestId('message').filter({ hasText: /Recuerda|Y este|Escríbeme/ });
+  await expect(run).toHaveCount(3);
+  await expect(run.nth(0)).not.toHaveClass(/bubble-tail-theirs/);
+  await expect(run.nth(2)).toHaveClass(/bubble-tail-theirs/);
+});
+
+test('reply by quoting, with emojis from the picker', async ({ page, isMobile }) => {
+  await loginAsDemo(page);
+  await openChat(page, 'luna');
+  const target = page.getByTestId('message').filter({ hasText: 'Escríbeme algo' });
+  if (isMobile) await target.dblclick();
+  else {
+    await target.hover();
+    await page.getByTestId('message-list').getByRole('button', { name: 'Responder' }).last().click();
+  }
+  await expect(page.getByTestId('reply-preview')).toContainText('Respondiendo a luna');
+  await expect(page.getByTestId('reply-preview')).toContainText('Escríbeme algo');
+
+  await page.getByTestId('composer').fill('Aquí estoy ');
+  await page.getByTestId('emoji-toggle').click();
+  await page.getByTestId('emoji-picker').getByRole('tab', { name: 'Amor' }).click();
+  await page.getByTestId('emoji-picker').getByRole('button', { name: '💜' }).click();
+  await expect(page.getByTestId('composer')).toHaveValue('Aquí estoy 💜');
+  await page.getByTestId('composer').press('Enter');
+
+  const sent = page.getByTestId('message').filter({ hasText: 'Aquí estoy 💜' });
+  await expect(sent.getByTestId('reply-quote')).toContainText('Escríbeme algo');
+  await expect(page.getByTestId('reply-preview')).toHaveCount(0);
+  // Tapping the quote jumps to the original.
+  await sent.getByTestId('reply-quote').click();
+  await expect(page.locator('.flash')).toHaveCount(1);
+});
+
+test('ephemeral and view-once messages disappear for both', async ({ page }) => {
+  await loginAsDemo(page);
+  await openChat(page, 'luna');
+  await page.getByTestId('ephemeral-toggle').click();
+  await page.getByTestId('ephemeral-menu').getByRole('menuitemradio', { name: '1 minuto' }).click();
+  await expect(page.getByTestId('ephemeral-hint')).toContainText('1 minuto');
+  await send(page, 'Esto dura un minuto');
+  await expect(page.getByTestId('message').filter({ hasText: 'Esto dura un minuto' }).getByTestId('countdown')).toHaveText(/⏱ 0:5\d|⏱ 1:00/);
+
+  await page.getByTestId('ephemeral-toggle').click();
+  await page.getByTestId('view-once').click();
+  await expect(page.getByTestId('ephemeral-hint')).toContainText('Ver una vez');
+  await send(page, 'Solo una vez');
+  const once = page.getByTestId('message').filter({ hasText: 'Solo una vez' });
+  await expect(once).toBeVisible();
+  // Luna opens it: 30 s later it self-destructs on both sides.
+  await expect(once.getByTestId('countdown')).toBeVisible({ timeout: 8000 });
+  await expect(once).toHaveCount(0, { timeout: 40_000 });
+});
+
+test('the partner profile opens from the header; «Autodestruir» asks first and wipes the chat', async ({ page }) => {
+  await loginAsDemo(page);
+  await openChat(page, 'luna');
+  await page.getByTestId('open-partner').click();
+  const profile = page.getByTestId('partner-profile');
+  await expect(profile.getByRole('heading', { name: 'luna' })).toBeVisible();
+  await expect(profile.getByTestId('partner-status')).toContainText('Solo para ti');
+  await expect(profile).toContainText('24 h');
+  await profile.getByTestId('partner-destroy').click();
+
+  const confirm = page.getByRole('dialog', { name: '¿Autodestruir este chat?' });
+  await expect(confirm).toContainText('No se puede deshacer');
+  await confirm.getByRole('button', { name: 'Cancelar' }).click();
+  await expect(page.getByTestId('chat-title')).toHaveText('luna');
+
+  await page.getByTestId('destroy-chat').click();
+  await page.getByRole('dialog', { name: '¿Autodestruir este chat?' }).getByRole('button', { name: 'Autodestruir' }).click();
+  await expect(page.getByTestId('conversation-item')).toHaveCount(0);
+  await expect(page.getByTestId('chat-title')).toHaveCount(0);
+  // Still a contact: a new, empty chat can start.
+  await page.getByTestId('tab-friends').click();
+  await page.getByRole('button', { name: 'Chatear con luna' }).click();
+  await expect(page.getByTestId('message')).toHaveCount(0);
 });

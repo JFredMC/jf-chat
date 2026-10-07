@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 import { AuthStore } from '../../core/auth/auth.store';
 import { DEMO_CONTROLS } from '../../core/config';
@@ -126,6 +126,12 @@ type Tab = 'chats' | 'friends';
             <app-attachment-tray chatFooter #tray [conversationId]="conversation.id" />
             <app-composer
               chatFooter
+              #composer
+              [replyTo]="store.replyingTo()"
+              [replyName]="replyName()"
+              (cancelReply)="store.reply(null)"
+              [options]="store.sendOptions()"
+              (optionsChange)="store.setOptions($event)"
               [hasExtra]="tray.ready().length > 0"
               [disabled]="tray.busy() || tray.hasErrors()"
               (send)="send($event, tray)"
@@ -172,6 +178,12 @@ export class ChatShellComponent implements OnInit {
   protected readonly profileOpen = signal(false);
   protected readonly newChatOpen = signal(false);
   protected readonly myName = computed(() => displayName(this.auth.user()));
+  private readonly composer = viewChild<ComposerComponent>('composer');
+  protected readonly replyName = computed(() => {
+    const quoted = this.store.replyingTo();
+    if (!quoted) return '';
+    return quoted.sender_id === this.auth.user()?.id ? 'tu mensaje' : displayName(this.store.otherMember(this.store.active())?.user);
+  });
 
   public constructor() {
     effect(() => {
@@ -187,11 +199,18 @@ export class ChatShellComponent implements OnInit {
         ...this.friends.friends().map((f) => f.friend),
       ]);
     });
+    effect(() => {
+      // Picking a message to reply to puts the cursor in the composer.
+      if (this.store.replyingTo()) untracked(() => this.composer()?.focus());
+    });
+    // Countdowns and on-time removal of self-destructing messages.
+    const clock = setInterval(() => this.store.tick(), 1000);
     const onVisible = () => {
       if (this.document.visibilityState === 'visible') this.store.markActiveRead();
     };
     this.document.addEventListener('visibilitychange', onVisible);
     inject(DestroyRef).onDestroy(() => {
+      clearInterval(clock);
       this.document.removeEventListener('visibilitychange', onVisible);
       this.realtime.stop();
     });

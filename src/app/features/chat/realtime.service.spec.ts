@@ -35,6 +35,9 @@ describe('RealtimeService', () => {
   let sender: MessageSender | null;
   const chat = {
     receive: vi.fn(),
+    applyExpiring: vi.fn(),
+    applyDeleted: vi.fn(),
+    applyDestroyed: vi.fn(),
     applyRead: vi.fn(),
     applyDelivered: vi.fn(),
     refreshConversation: vi.fn(),
@@ -144,6 +147,15 @@ describe('RealtimeService', () => {
     connection.subject.next({ type: 'friendship_updated', data: { friendshipId: 8, status: 'accepted' } });
     await vi.waitFor(() => expect(friends.load).toHaveBeenCalled());
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('forwards self-destruction events to the chat store', () => {
+    connection.subject.next({ type: 'messages_deleted', data: { conversationId: 10, ids: [1, 2] } });
+    connection.subject.next({ type: 'messages_expiring', data: { conversationId: 10, items: [{ id: 3, expires_at: '2026-01-01T00:00:30Z' }] } });
+    connection.subject.next({ type: 'conversation_destroyed', data: { conversationId: 10 } });
+    expect(chat.applyDeleted).toHaveBeenCalledWith(10, [1, 2]);
+    expect(chat.applyExpiring).toHaveBeenCalledWith(10, [{ id: 3, expires_at: '2026-01-01T00:00:30Z' }]);
+    expect(chat.applyDestroyed).toHaveBeenCalledWith(10);
   });
 
   it('sends over the socket with acknowledgement', async () => {
