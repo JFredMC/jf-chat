@@ -20,9 +20,11 @@ export class PanicService {
   public async wipe(): Promise<void> {
     // Best effort, but never wait long: speed matters more here.
     await Promise.race([this.push.disable().catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 800))]);
-    this.auth.logout();
     wipeLocalData();
+    await this.auth.revokeAndClear();
     await Promise.race([clearWorkers(), new Promise((resolve) => setTimeout(resolve, 800))]);
+    // Again: anything written while the session was being revoked goes too.
+    wipeLocalData();
     const base = this.document.querySelector('base')?.getAttribute('href') ?? '/';
     this.document.defaultView?.location.replace(`${base}auth/login`);
   }

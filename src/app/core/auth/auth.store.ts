@@ -168,6 +168,15 @@ export class AuthStore {
     }
   }
 
+  /** Revokes the session on the server (waiting a little for it) and forgets it here. */
+  public async revokeAndClear(timeoutMs = 1500): Promise<void> {
+    const refreshToken = this.storedRefreshToken();
+    this.clear();
+    if (!refreshToken) return;
+    const revoke = firstValueFrom(this.http.post(`${this.api}/auth/logout`, { refreshToken }).pipe(catchError(() => of(null))));
+    await Promise.race([revoke, new Promise((resolve) => setTimeout(resolve, timeoutMs))]);
+  }
+
   /** The session ended on its own (refresh token expired or revoked). */
   public expire(): void {
     this.clear();

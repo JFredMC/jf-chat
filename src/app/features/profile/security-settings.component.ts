@@ -54,7 +54,7 @@ import { BrandLogoComponent } from '../../shared/brand.component';
           <span class="block text-xs text-gray-500">Solo si te escriben tras 6 horas de silencio. El aviso muestra un código al azar: ni quién, ni qué.</span>
         </span>
         <input type="checkbox" class="switch mt-1" [checked]="push.state() === 'on'" [disabled]="push.state() === 'busy' || push.state() === 'unsupported'"
-          (change)="togglePush($any($event.target).checked)" aria-labelledby="push-title" data-testid="push-toggle" />
+          (change)="togglePush($any($event.target))" aria-labelledby="push-title" data-testid="push-toggle" />
       </div>
       @if (hint(); as text) {
         <p class="text-xs text-amber-700 dark:text-amber-300" data-testid="push-hint">{{ text }}</p>
@@ -121,12 +121,14 @@ export class SecuritySettingsComponent implements OnInit {
     else this.toast.error('PIN incorrecto');
   }
 
-  protected async togglePush(on: boolean): Promise<void> {
-    if (!on) {
+  protected async togglePush(box: HTMLInputElement): Promise<void> {
+    if (!box.checked) {
       await this.push.disable();
       return;
     }
     const state = await this.push.enable();
+    // The binding may not change (off → unavailable): sync the box by hand.
+    box.checked = state === 'on';
     if (state === 'on') this.toast.success('Avisos discretos activados');
   }
 }

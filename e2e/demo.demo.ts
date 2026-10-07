@@ -196,8 +196,10 @@ test('sending an image attachment', async ({ page }) => {
   await expect(page.getByTestId('send')).toBeEnabled();
   await page.getByTestId('send').click();
 
-  const sent = page.getByTestId('message').filter({ has: page.getByRole('img', { name: 'captura.png' }) });
+  // Never shown inline: a tile that has to be held.
+  const sent = page.locator('[data-mine="true"]').filter({ has: page.getByTestId('secure-media') }).last();
   await expect(sent).toBeVisible();
+  await expect(sent.locator('img')).toHaveCount(0);
   await expect(page.getByTestId('attachment-tray')).toHaveCount(0);
   await expect(page.getByTestId('message').last()).toContainText('Ya la vi', { timeout: 8000 });
 });
@@ -206,7 +208,9 @@ test('rejects files the API would not accept', async ({ page }) => {
   await loginAsDemo(page);
   await openChat(page, 'luna');
   await page.getByTestId('file-input').setInputFiles({ name: 'programa.exe', mimeType: 'application/x-msdownload', buffer: Buffer.from('MZ') });
-  await expect(page.getByText('solo imágenes')).toBeVisible();
+  await expect(page.getByText('solo fotos').first()).toBeVisible();
+  await page.getByTestId('file-input').setInputFiles({ name: 'contrato.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
+  await expect(page.getByText('«contrato.pdf»: solo fotos')).toBeVisible();
   await expect(page.getByTestId('attachment-tray')).toHaveCount(0);
 });
 
@@ -406,4 +410,137 @@ test('the partner profile opens from the header; «Autodestruir» asks first and
   await page.getByTestId('tab-friends').click();
   await page.getByRole('button', { name: 'Chatear con luna' }).click();
   await expect(page.getByTestId('message')).toHaveCount(0);
+});
+
+test('photos are only visible while held: canvas with a watermark, nothing to save', async ({ page }) => {
+  await loginAsDemo(page);
+  await openChat(page, 'luna');
+  const tile = page.getByTestId('secure-media').first();
+  await expect(tile).toContainText('Mantén pulsado para ver');
+  await expect(page.locator('img[src*="demo-foto"]')).toHaveCount(0);
+
+  await tile.scrollIntoViewIfNeeded();
+  const box = (await tile.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  const viewer = page.getByTestId('media-viewer');
+  await expect(viewer).toBeVisible();
+  const canvas = page.getByTestId('media-canvas');
+  await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width)).toBeGreaterThan(100);
+  // The watermark is drawn into the pixels themselves: compare with the bare photo.
+  const changed = await canvas.evaluate(async (c: HTMLCanvasElement) => {
+    const bare = new Image();
+    bare.src = 'images/demo-foto.webp';
+    await bare.decode();
+    const ref = document.createElement('canvas');
+    ref.width = c.width;
+    ref.height = c.height;
+    const refCtx = ref.getContext('2d')!;
+    refCtx.drawImage(bare, 0, 0, c.width, c.height);
+    const a = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
+    const b = refCtx.getImageData(0, 0, c.width, c.height).data;
+    let count = 0;
+    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 25) count++;
+    return count / (a.length / 4);
+  });
+  expect(changed).toBeGreaterThan(0.01);
+  // No context menu, no dragging.
+  expect(await canvas.evaluate((c) => c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })))).toBe(false);
+  await expect(viewer.locator('img, a[href]')).toHaveCount(0);
+
+  await page.mouse.up();
+  await expect(viewer).toHaveCount(0);
+});
+
+test('screenshot deterrence: the chat hides on blur, PrintScreen and print', async ({ page }) => {
+  await loginAsDemo(page);
+  await openChat(page, 'luna');
+  const shield = page.getByTestId('privacy-shield');
+  await page.evaluate(() => window.dispatchEvent(new Event('blur')));
+  await expect(shield).toBeVisible();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(shield).toBeHidden();
+
+  await page.keyboard.press('PrintScreen');
+  await expect(shield).toBeVisible();
+  await expect(shield).toBeHidden({ timeout: 6000 });
+
+  await page.keyboard.press('Control+p');
+  await expect(page.getByText('Imprimir está desactivado en Velo')).toBeVisible();
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.locator('app-root')).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+  await expect(page.locator('app-root')).toBeVisible();
+});
+
+test('PIN lock: sealed session, asks on open and on demand, wrong PINs are counted', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
+  await dialog.getByTestId('pin-new').fill('4821');
+  await dialog.getByTestId('pin-confirm').fill('4821');
+  await dialog.getByTestId('pin-save').click();
+  await expect(page.getByText('PIN activado')).toBeVisible();
+  await expect(dialog.getByTestId('pin-remove')).toBeVisible();
+  const stored = await page.evaluate(() => localStorage.getItem('velo.session'));
+  expect(stored?.startsWith('pin1.')).toBe(true);
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+
+  await page.reload();
+  const lock = page.getByTestId('lock-screen');
+  await expect(lock).toBeVisible();
+  await lock.getByTestId('lock-pin').fill('0000');
+  await lock.getByTestId('lock-submit').click();
+  await expect(lock.getByTestId('lock-error')).toContainText('Quedan 4 intentos');
+  await lock.getByTestId('lock-pin').fill('4821');
+  await lock.getByTestId('lock-submit').click();
+  await expect(lock).toBeHidden();
+  await expect(page.getByTestId('me-name')).toHaveText('demo');
+
+  await page.getByTestId('lock-now').click();
+  await expect(lock).toBeVisible();
+  await lock.getByTestId('lock-pin').fill('4821');
+  await lock.getByTestId('lock-pin').press('Enter');
+  await expect(lock).toBeHidden();
+
+  await page.getByTestId('open-profile').click();
+  await dialog.getByTestId('pin-current').fill('4821');
+  await dialog.getByTestId('pin-remove').click();
+  await expect(page.getByText('PIN quitado')).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('velo.session')?.startsWith('pin1.'))).toBe(false);
+});
+
+test('panic button: signs out and wipes this device at once', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  await page.getByTestId('disguise').check();
+  await page.getByRole('dialog', { name: 'Mi perfil' }).getByRole('button', { name: 'Cerrar' }).click();
+  await openChat(page, 'luna');
+  await send(page, 'Secreto antes del pánico');
+  await expect(page.getByTestId('message').filter({ hasText: 'Secreto antes del pánico' })).toBeVisible();
+  await backToList(page);
+  await page.getByTestId('panic').click();
+  await expect(page).toHaveURL(/\/auth\/login$/);
+  // Only the discreet preferences survive (the demo re-seeds its sample data).
+  await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((k) => !['velo.disguise', 'velo.theme', 'velo.demo.db'].includes(k)))).toEqual([]);
+  expect(await page.evaluate(() => localStorage.getItem('velo.demo.db') ?? '')).not.toContain('Secreto antes del pánico');
+  // Still discreet after the wipe.
+  await expect(page).toHaveTitle(/Notas/);
+
+  // Escape three times does the same.
+  await loginAsDemo(page);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/\/auth\/login$/);
+});
+
+test('content-free notifications: preview with only a code; the demo sends none', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
+  await expect(dialog.getByTestId('push-preview')).toContainText(/^\s*\d{6}\s*Así se ve un aviso\s*$/);
+  await dialog.getByTestId('push-toggle').click();
+  await expect(dialog.getByTestId('push-hint')).toContainText('en la demo no se envían');
+  await expect(dialog.getByTestId('push-toggle')).not.toBeChecked();
 });
