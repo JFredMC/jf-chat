@@ -6,7 +6,7 @@
 //   under /jf-chat/demo/.
 //
 // GitHub Pages has no SPA rewrites: 404.html (a copy of index.html) lets deep
-// links boot the app. .nojekyll disables Jekyll processing.
+// links boot the app; in api mode it also forwards deep links into the demo. .nojekyll disables Jekyll processing.
 import { execSync } from 'node:child_process';
 import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -46,5 +46,14 @@ if (mode === 'api') {
 }
 if (!existsSync(join(out, 'index.html'))) throw new Error('index.html missing');
 copyFileSync(join(out, 'index.html'), join(out, '404.html'));
+if (mode === 'api') {
+  // Deep links into the demo also land on this 404.html: boot.js sends them
+  // on to the demo app (see public/boot.js).
+  const notFound = join(out, '404.html');
+  const html = readFileSync(notFound, 'utf8');
+  const tagged = html.replace('<head>', '<head>\n    <meta name="velo-nested-app" content="/jf-chat/demo/" />');
+  if (tagged === html) throw new Error('could not tag 404.html');
+  writeFileSync(notFound, tagged);
+}
 writeFileSync(join(out, '.nojekyll'), '');
 console.log(`GitHub Pages files ready in ${out} (mode: ${mode})`);

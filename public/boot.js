@@ -1,3 +1,26 @@
+// GitHub Pages has no rewrites: every unknown path gets the root app's
+// 404.html, deep links into the demo (/jf-chat/demo/chat, a reload there)
+// included. The published 404.html names the nested app in a meta tag; for
+// those paths we hand over to the nested app's root carrying the path, and
+// there it is restored before Angular reads the URL.
+(function () {
+  try {
+    var base = new URL(document.baseURI).pathname;
+    var wanted = new URLSearchParams(location.search).get('__r');
+    if (wanted !== null) {
+      // Same origin only, and only paths inside this app.
+      history.replaceState(history.state, '', wanted.indexOf(base) === 0 ? wanted : base);
+      return;
+    }
+    var nested = document.querySelector('meta[name="velo-nested-app"]');
+    var prefix = nested && nested.getAttribute('content');
+    if (prefix && location.pathname.indexOf(prefix) === 0 && location.pathname !== prefix) {
+      document.documentElement.style.visibility = 'hidden';
+      location.replace(prefix + '?__r=' + encodeURIComponent(location.pathname + location.search + location.hash));
+    }
+  } catch (e) {}
+})();
+
 // Runs before the first paint (an external file, so the CSP needs no
 // 'unsafe-inline'): dark theme by default and the discreet identity
 // ("Notas") when the user chose it, so not even the tab title flashes.
