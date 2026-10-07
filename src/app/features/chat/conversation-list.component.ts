@@ -30,7 +30,7 @@ import { PresenceStore } from './presence.store';
         } @else {
           <span class="text-4xl" aria-hidden="true">💬</span>
           <p>Aún no tienes conversaciones.</p>
-          <button type="button" class="btn-primary" (click)="findFriends.emit()">Busca amigos para chatear</button>
+          <button type="button" class="btn-primary" (click)="findFriends.emit()">Conecta con un código</button>
         }
       </div>
     } @else {
@@ -111,6 +111,7 @@ export class ConversationListComponent {
     const prefix = message.sender_id === this.meId() ? 'Tú: ' : '';
     if (message.content) return prefix + message.content;
     if (message.message_type === 'image') return `${prefix}📷 Foto`;
+    if (message.message_type === 'video') return `${prefix}🎬 Video`;
     if (message.attachments?.length || message.message_type === 'file') return `${prefix}📎 Archivo`;
     return prefix;
   }

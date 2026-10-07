@@ -6,17 +6,19 @@ import {
   provideBrowserGlobalErrorListeners,
   provideZonelessChangeDetection,
 } from '@angular/core';
-import { provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
+import { TitleStrategy, provideRouter, withComponentInputBinding, withInMemoryScrolling } from '@angular/router';
 import { routes } from './app.routes';
 import { backendProviders } from './backend.providers';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { AuthStore } from './core/auth/auth.store';
+import { BrandTitleStrategy } from './core/ui/brand-title.strategy';
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideZonelessChangeDetection(),
     provideRouter(routes, withComponentInputBinding(), withInMemoryScrolling()),
+    { provide: TitleStrategy, useClass: BrandTitleStrategy },
     // XHR backend (not fetch) so uploads report progress.
     provideHttpClient(withInterceptors([authInterceptor])),
     // Real API + Socket.IO, or the in-browser backend in the demo build.

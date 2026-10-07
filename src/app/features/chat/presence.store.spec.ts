@@ -16,6 +16,7 @@ describe('PresenceStore', () => {
     expect(store.isOnline(1)).toBe(true);
     expect(store.label(1)).toBe('en línea');
     expect(store.label(2)).toBe('desconectado');
+    expect(store.label(2, null, true)).toBe('última conexión oculta');
 
     store.apply([{ userId: 1, online: false, lastSeen: new Date().toISOString() }]);
     expect(store.isOnline(1)).toBe(false);

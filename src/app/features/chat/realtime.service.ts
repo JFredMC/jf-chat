@@ -109,6 +109,15 @@ export class RealtimeService {
         this.friends.patchUser(event.data);
         if (event.data.id === me) this.auth.patchSelf(event.data);
         break;
+      case 'messages_expiring':
+        this.chat.applyExpiring(event.data.conversationId, event.data.items);
+        break;
+      case 'messages_deleted':
+        this.chat.applyDeleted(event.data.conversationId, event.data.ids);
+        break;
+      case 'conversation_destroyed':
+        this.chat.applyDestroyed(event.data.conversationId);
+        break;
       case 'session_expired':
         break;
     }
@@ -120,9 +129,14 @@ export class RealtimeService {
 
   private async onFriendshipUpdated(status: string): Promise<void> {
     const before = this.friends.incoming().length;
-    const friendsBefore = this.friends.friends().length;
+    const known = new Set(this.friends.friends().map((f) => f.id));
     await this.friends.load();
-    if (status === 'pending' && this.friends.incoming().length > before) this.toast.info('Tienes una nueva solicitud de amistad');
-    if (status === 'accepted' && this.friends.friends().length > friendsBefore) this.toast.success('Tienes un nuevo amigo. ¡Ya pueden chatear!');
+    // The invite owner is the friendship's "outgoing" side; the redeemer already got its own toast.
+    const viaMyCode = this.friends.friends().some((f) => !known.has(f.id) && f.direction === 'outgoing');
+    if (status === 'pending' && this.friends.incoming().length > before) this.toast.info('Tienes una solicitud de contacto pendiente');
+    if (status === 'accepted' && viaMyCode) {
+      this.toast.success('Alguien usó tu código. ¡Ya pueden chatear!');
+      void this.friends.refreshInviteIfLoaded();
+    }
   }
 }

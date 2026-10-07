@@ -1,7 +1,7 @@
 import type { AuthSession, Conversation, Friendship, Message } from '../core/models';
 import type { ServerEvent } from '../core/realtime/realtime-connection';
-import { DEMO_PASSWORD, STORAGE_KEY } from './demo-db';
-import { DemoHttpError, DemoServer } from './demo-server';
+import { DEMO_CODES, DEMO_PASSWORD, STORAGE_KEY } from './demo-db';
+import { DemoHttpError, DemoServer, RETENTION_MS } from './demo-server';
 
 describe('DemoServer (in-browser API)', () => {
   let server: DemoServer;
@@ -33,7 +33,7 @@ describe('DemoServer (in-browser API)', () => {
     expect(session.user.username).toBe('demo');
     expect(session.accessToken).toMatch(/^demo\.\d+\./);
     expect(error(() => login('demo', 'nope'))).toMatchObject({ status: 401, message: 'Usuario o contraseña incorrectos' });
-    expect(error(() => login('laura.mendez'))).toMatchObject({ status: 401 });
+    expect(error(() => login('luna'))).toMatchObject({ status: 401 });
   });
 
   it('requires a token for private endpoints', () => {
@@ -51,22 +51,23 @@ describe('DemoServer (in-browser API)', () => {
     expect(error(() => call('POST', '/auth/register', { username: 'demo', password: 'Secreta123' }))).toMatchObject({ status: 409 });
     expect(error(() => call('POST', '/auth/register', { username: 'x', password: 'Secreta123' }))).toMatchObject({ status: 400 });
     expect(error(() => call('POST', '/auth/register', { username: 'nuevo', password: 'debil' }))).toMatchObject({ status: 400 });
-    const session = call('POST', '/auth/register', { username: 'Nuevo', password: 'Secreta123', first_name: ' Ana ' }).body as AuthSession;
-    expect(session.user).toMatchObject({ username: 'nuevo', first_name: 'Ana' });
+    const session = call('POST', '/auth/register', { username: 'Nuevo', password: 'Secreta123' }).body as AuthSession;
+    expect(session.user.username).toBe('nuevo');
+    expect(session.user).not.toHaveProperty('first_name');
     expect(call('GET', '/auth/username-available', null, null, 'username=nuevo').body).toEqual({ available: false });
-    // A welcome friend request from Laura.
-    const friendships = call('GET', '/friendship', null, session.accessToken).body as Friendship[];
-    expect(friendships).toEqual([expect.objectContaining({ status: 'pending', direction: 'incoming' })]);
+    // Nobody can find a new account: it starts without contacts.
+    expect(call('GET', '/friendship', null, session.accessToken).body).toEqual([]);
     expect(localStorage.getItem(STORAGE_KEY)).toContain('"nuevo"');
   });
 
   it('lists the seeded conversations with unread counts, newest first data', () => {
     const { accessToken } = login();
     const conversations = call('GET', '/conversation', null, accessToken).body as Conversation[];
-    expect(conversations).toHaveLength(3);
-    const laura = conversations.find((c) => c.members.some((m) => m.user.username === 'laura.mendez'))!;
-    expect(laura.unread_count).toBe(2);
-    expect(laura.last_message?.content).toContain('respuestas automáticas');
+    expect(conversations).toHaveLength(1);
+    const luna = conversations.find((c) => c.members.some((m) => m.user.username === 'luna'))!;
+    expect(luna.unread_count).toBe(3);
+    expect(luna.retention_seconds).toBe(86400);
+    expect(luna.last_message?.content).toContain('te contesto');
   });
 
   it('pages messages chronologically with hasMore', () => {
@@ -98,16 +99,16 @@ describe('DemoServer (in-browser API)', () => {
     expect(error(() => call('POST', `/conversation/${conversation.id}/messages`, { content: '   ' }, accessToken))).toMatchObject({ status: 400 });
   });
 
-  it('simulated friends deliver, read, type and answer over the realtime channel', async () => {
+  it('simulated contacts deliver, read, type and answer over the realtime channel', async () => {
     server.speed = 0.01;
     const session = login();
     const me = session.user.id;
     const conversations = call('GET', '/conversation', null, session.accessToken).body as Conversation[];
-    const laura = conversations.find((c) => c.members.some((m) => m.user.username === 'laura.mendez'))!;
+    const luna = conversations.find((c) => c.members.some((m) => m.user.username === 'luna'))!;
     const events: ServerEvent[] = [];
     const subscription = server.eventsFor(me).subscribe((event) => events.push(event));
     server.connect(me);
-    const ack = server.socket(me, 'send_message', { conversationId: laura.id, content: 'Hola Laura', client_id: 'x1' });
+    const ack = server.socket(me, 'send_message', { conversationId: luna.id, content: 'Hola Luna', client_id: 'x1' });
     expect(ack.ok).toBe(true);
     await vi.runAllTimersAsync();
     subscription.unsubscribe();
@@ -115,20 +116,54 @@ describe('DemoServer (in-browser API)', () => {
     expect(types).toEqual(
       expect.arrayContaining(['presence_snapshot', 'new_message', 'conversation_delivered', 'conversation_read', 'typing']),
     );
-    const page = call('GET', `/conversation/${laura.id}/messages`, null, session.accessToken).body as { items: Message[] };
-    expect(page.items.at(-1)?.content).toContain('¡Hola, Invitado!');
+    const page = call('GET', `/conversation/${luna.id}/messages`, null, session.accessToken).body as { items: Message[] };
+    expect(page.items.at(-1)?.content).toContain('Hola, demo');
   });
 
-  it('accepts friend requests on behalf of simulated people', async () => {
+  it('connects only through single-use invite codes (no user search)', async () => {
     server.speed = 0.01;
     const { accessToken } = login();
-    const [valentina] = call('GET', '/user/search', null, accessToken, 'q=valen').body as { id: number }[];
-    const request = call('POST', '/friendship/request', { friendId: valentina.id }, accessToken).body as Friendship;
-    expect(request).toMatchObject({ status: 'pending', direction: 'outgoing' });
+    expect(error(() => call('GET', '/user/search', null, accessToken, 'q=sol'))).toMatchObject({ status: 404 });
+    const added = call('POST', '/friendship/invite', { code: DEMO_CODES.sol.toLowerCase() }, accessToken).body as Friendship;
+    expect(added).toMatchObject({ status: 'accepted', direction: 'incoming', friend: expect.objectContaining({ username: 'sol' }) });
+    expect(error(() => call('POST', '/friendship/invite', { code: DEMO_CODES.sol }, accessToken))).toMatchObject({ status: 409 });
+    expect(error(() => call('POST', '/friendship/invite', { code: 'ZZZZ-ZZZZ-ZZ' }, accessToken))).toMatchObject({ status: 404 });
+    // Sol says hello in a new chat.
     await vi.runAllTimersAsync();
-    const friendships = call('GET', '/friendship', null, accessToken).body as Friendship[];
-    expect(friendships.find((f) => f.id === request.id)?.status).toBe('accepted');
-    expect(error(() => call('POST', '/friendship/request', { friendId: valentina.id }, accessToken))).toMatchObject({ status: 409 });
+    const conversations = call('GET', '/conversation', null, accessToken).body as Conversation[];
+    expect(conversations.some((c) => c.members.some((m) => m.user.username === 'sol'))).toBe(true);
+
+    // A person's code works once and then rotates; your own code is rejected like an unknown one.
+    const { code } = call('GET', '/auth/me/invite', null, accessToken).body as { code: string };
+    expect(code).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}$/);
+    expect(error(() => call('POST', '/friendship/invite', { code }, accessToken))).toMatchObject({ status: 404 });
+    const other = call('POST', '/auth/register', { username: 'otra', password: 'Secreta123' }).body as AuthSession;
+    expect(error(() => call('GET', '/user/' + other.user.id, null, accessToken))).toMatchObject({ status: 404 });
+    call('POST', '/friendship/invite', { code }, other.accessToken);
+    // Used up: the same code no longer exists.
+    expect(error(() => call('POST', '/friendship/invite', { code }, other.accessToken))).toMatchObject({ status: 404 });
+    const next = call('GET', '/auth/me/invite', null, accessToken).body as { code: string };
+    expect(next.code).not.toBe(code);
+    expect(call('GET', '/user/' + other.user.id, null, accessToken).body).toMatchObject({ username: 'otra' });
+    const rotated = call('POST', '/auth/me/invite/rotate', null, accessToken).body as { code: string };
+    expect(rotated.code).not.toBe(next.code);
+  });
+
+  it('hides last seen and typing when the user asks for it', async () => {
+    const session = login();
+    const luna = (call('GET', '/friendship', null, session.accessToken).body as Friendship[])[0].friend;
+    const lunaEvents: ServerEvent[] = [];
+    const subscription = server.eventsFor(luna.id).subscribe((event) => lunaEvents.push(event));
+    server.connect(session.user.id);
+    const updated = call('PATCH', '/auth/me', { hide_last_seen: true, hide_typing: true }, session.accessToken).body as { hide_last_seen: boolean };
+    expect(updated.hide_last_seen).toBe(true);
+    const [conversation] = call('GET', '/conversation', null, session.accessToken).body as Conversation[];
+    server.socket(session.user.id, 'typing', { conversationId: conversation.id, isTyping: true });
+    await vi.advanceTimersByTimeAsync(0);
+    subscription.unsubscribe();
+    expect(lunaEvents.some((e) => e.type === 'typing')).toBe(false);
+    expect(lunaEvents.filter((e) => e.type === 'presence').at(-1)).toMatchObject({ data: { online: false, lastSeen: null } });
+    expect(error(() => call('PATCH', '/auth/me', { first_name: 'Ana' }, session.accessToken))).toMatchObject({ status: 400 });
   });
 
   it('sets a status and avatar, validates them and tells the user and contacts', async () => {
@@ -172,5 +207,86 @@ describe('DemoServer (in-browser API)', () => {
     call('POST', '/auth/register', { username: 'temporal', password: 'Secreta123' });
     server.reset();
     expect(call('GET', '/auth/username-available', null, null, 'username=temporal').body).toEqual({ available: true });
+  });
+
+  describe('self-destruction', () => {
+    const lunaChat = (token: string) =>
+      (call('GET', '/conversation', null, token).body as Conversation[]).find((c) => c.members.some((m) => m.user.username === 'luna'))!;
+    const page = (id: number, token: string) => (call('GET', `/conversation/${id}/messages`, null, token).body as { items: Message[] }).items;
+
+    it('seeds a quoted reply and an ephemeral message', () => {
+      const { accessToken } = login();
+      const items = page(lunaChat(accessToken).id, accessToken);
+      expect(items.find((m) => m.content.startsWith('Lo cobro'))?.reply_to).toMatchObject({ content: expect.stringContaining('abrazo') });
+      expect(items.find((m) => m.content.startsWith('Y este'))?.expires_at).toBeTruthy();
+    });
+
+    it('validates replies and ephemeral timers like the API', () => {
+      const { accessToken } = login();
+      const chat = lunaChat(accessToken);
+      expect(error(() => call('POST', `/conversation/${chat.id}/messages`, { content: 'x', reply_to_id: 999999 }, accessToken))).toMatchObject({ status: 400 });
+      expect(error(() => call('POST', `/conversation/${chat.id}/messages`, { content: 'x', expires_in: 5 }, accessToken))).toMatchObject({ status: 400 });
+      const quoted = page(chat.id, accessToken)[0];
+      const sent = call('POST', `/conversation/${chat.id}/messages`, { content: 'te cito', reply_to_id: quoted.id, expires_in: 60 }, accessToken).body as Message;
+      expect(sent.reply_to).toMatchObject({ id: quoted.id });
+      expect(new Date(sent.expires_at!).getTime() - Date.now()).toBeGreaterThan(55_000);
+    });
+
+    it('destroys ephemeral messages on time and tells the members', async () => {
+      const { accessToken, user } = login();
+      const chat = lunaChat(accessToken);
+      const events: ServerEvent[] = [];
+      const subscription = server.eventsFor(user.id).subscribe((event) => events.push(event));
+      const sent = call('POST', `/conversation/${chat.id}/messages`, { content: 'se va', expires_in: 10 }, accessToken).body as Message;
+      await vi.advanceTimersByTimeAsync(11_000);
+      subscription.unsubscribe();
+      expect(page(chat.id, accessToken).some((m) => m.id === sent.id)).toBe(false);
+      expect(events).toContainEqual({ type: 'messages_deleted', data: { conversationId: chat.id, ids: [sent.id] } });
+    });
+
+    it('view-once messages start a 30 s timer when the recipient reads them', async () => {
+      server.speed = 0.01;
+      const { accessToken, user } = login();
+      const chat = lunaChat(accessToken);
+      const events: ServerEvent[] = [];
+      const subscription = server.eventsFor(user.id).subscribe((event) => events.push(event));
+      const sent = call('POST', `/conversation/${chat.id}/messages`, { content: 'mírame', view_once: true }, accessToken).body as Message;
+      expect(sent).toMatchObject({ view_once: true, expires_at: null });
+      // Luna reads it (simulated) a moment later.
+      await vi.advanceTimersByTimeAsync(100);
+      const expiring = events.find((e) => e.type === 'messages_expiring');
+      expect(expiring?.data).toMatchObject({ conversationId: chat.id, items: [{ id: sent.id }] });
+      await vi.advanceTimersByTimeAsync(31_000);
+      subscription.unsubscribe();
+      expect(page(chat.id, accessToken).some((m) => m.id === sent.id)).toBe(false);
+    });
+
+    it('everything older than 24 h is gone, quotes included', () => {
+      const { accessToken } = login();
+      const chat = lunaChat(accessToken);
+      vi.setSystemTime(Date.now() + RETENTION_MS + 1000);
+      expect(page(chat.id, accessToken)).toEqual([]);
+      expect(lunaChat(accessToken).last_message).toBeNull();
+    });
+
+    it('«Autodestruir» removes the chat and its files for both members', async () => {
+      const { accessToken, user } = login();
+      const chat = lunaChat(accessToken);
+      const luna = chat.members.find((m) => m.user.username === 'luna')!.user_id;
+      const lunaEvents: ServerEvent[] = [];
+      const subscription = server.eventsFor(luna).subscribe((event) => lunaEvents.push(event));
+      const file = server.upload(accessToken, chat.id, { name: 'a.png', type: 'image/png', size: 10, url: 'data:image/png;base64,AA', persistable: true });
+      call('POST', `/conversation/${chat.id}/messages`, { attachment_ids: [file.id] }, accessToken);
+      expect(call('POST', `/conversation/${chat.id}/destroy`, null, accessToken).status).toBe(204);
+      await vi.advanceTimersByTimeAsync(0);
+      subscription.unsubscribe();
+      expect(lunaEvents).toContainEqual({ type: 'conversation_destroyed', data: { conversationId: chat.id } });
+      expect(call('GET', '/conversation', null, accessToken).body).toEqual([]);
+      expect(error(() => call('GET', `/attachment/${file.id}/url`, null, accessToken))).toMatchObject({ status: 404 });
+      expect(localStorage.getItem(STORAGE_KEY)).not.toContain('data:image/png;base64,AA');
+      const other = call('POST', '/auth/register', { username: 'tercero', password: 'Secreta123' }).body as AuthSession;
+      expect(error(() => call('POST', `/conversation/${chat.id}/destroy`, null, other.accessToken))).toMatchObject({ status: 404 });
+      expect(user.username).toBe('demo');
+    });
   });
 });

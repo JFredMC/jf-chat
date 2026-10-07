@@ -5,8 +5,6 @@ export const API = 'http://api.test';
 export const user = (id: number, username = `user${id}`, extra: Partial<User> = {}): User => ({
   id,
   username,
-  first_name: null,
-  last_name: null,
   avatar_url: null,
   ...extra,
 });

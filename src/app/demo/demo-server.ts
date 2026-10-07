@@ -4,6 +4,8 @@ import type { Ack, Attachment, AuthSession, Conversation, Friendship, Message, P
 import type { ClientEvents, ServerEvent } from '../core/realtime/realtime-connection';
 import {
   loadDb,
+  newInviteCode,
+  normalizeInvite,
   saveDb,
   seedDb,
   type DbAttachment,
@@ -38,6 +40,9 @@ export interface DemoResponse {
   body: unknown;
 }
 
+const DEMO_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const DEMO_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
 export interface DemoFile {
   name: string;
   type: string;
@@ -53,6 +58,9 @@ interface Envelope {
 }
 
 const USERNAME_PATTERN = /^[a-z0-9._]{3,30}$/;
+/** Same defaults as the API: MESSAGE_RETENTION=24h, VIEW_ONCE_TTL=30s. */
+export const RETENTION_MS = 24 * 60 * 60_000;
+export const VIEW_ONCE_MS = 30_000;
 const PAGE_LIMIT = 50;
 const MAX_MESSAGE = 4000;
 
@@ -67,9 +75,9 @@ const isStrong = (password: string) =>
   password.length >= 8 && password.length <= 72 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password);
 
 /**
- * In-browser implementation of the JfChat API (jf-chat-be) for the public
+ * In-browser implementation of the Velo API (jf-chat-be) for the public
  * demo: same endpoints, payloads, errors and realtime events, with simulated
- * friends that read, type and answer. Data lives in localStorage.
+ * contacts that read, type and answer. Data lives in localStorage.
  */
 @Injectable({ providedIn: 'root' })
 export class DemoServer {
@@ -79,11 +87,13 @@ export class DemoServer {
   private readonly blobUrls = new Map<number, string>();
   private readonly replyTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
   private readonly replyCounters = new Map<number, number>();
+  private purgeTimer?: ReturnType<typeof setTimeout>;
 
   /** Multiplies every simulated delay (0 in unit tests). */
   public speed = 1;
 
   public constructor() {
+    this.purge();
     this.save();
   }
 
@@ -122,6 +132,7 @@ export class DemoServer {
   }
 
   public socket<K extends keyof ClientEvents>(userId: number, event: K, payload: ClientEvents[K]): Ack {
+    this.purge();
     try {
       switch (event) {
         case 'send_message': {
@@ -132,6 +143,8 @@ export class DemoServer {
           const { conversationId, isTyping } = payload as ClientEvents['typing'];
           const conversation = this.activeConversation(userId, conversationId);
           const me = this.findUser(userId)!;
+          // Like the API: hidden typing is dropped server-side.
+          if (me.hide_typing) return { ok: true };
           this.emitTo(this.otherMemberIds(conversation, userId), {
             type: 'typing',
             data: { conversationId, userId, username: me.username, isTyping },
@@ -159,6 +172,8 @@ export class DemoServer {
     const { method, path } = request;
     const body = (request.body ?? {}) as Record<string, unknown>;
     const route = `${method} ${path}`;
+    // Like the API's purge job: nothing past its deadline is ever served.
+    this.purge();
     let match: RegExpExecArray | null;
 
     // Public endpoints
@@ -170,6 +185,8 @@ export class DemoServer {
       this.save();
       return { status: 204, body: null };
     }
+    // The demo never sends push notifications.
+    if (route === 'GET /push/public-key') return { status: 200, body: { publicKey: null } };
     if (route === 'GET /auth/username-available') {
       const username = (request.query.get('username') ?? '').trim().toLowerCase();
       return { status: 200, body: { available: !this.db.users.some((u) => u.username === username) } };
@@ -182,11 +199,12 @@ export class DemoServer {
     if (route === 'PATCH /auth/me') return { status: 200, body: this.updateProfile(me, body) };
     if (route === 'DELETE /auth/me/avatar') return { status: 200, body: this.setAvatar(me, null) };
     if (route === 'POST /auth/me/password') return this.created(200, this.changePassword(me, body));
-    if (route === 'GET /user/search') return { status: 200, body: this.search(me, request.query.get('q') ?? '') };
-    if ((match = /^GET \/user\/(\d+)$/.exec(route))) return { status: 200, body: this.publicUser(this.requireUser(Number(match[1]))) };
+    if (route === 'GET /auth/me/invite') return { status: 200, body: { code: this.formatCode(this.findUser(me)!.invite_code) } };
+    if (route === 'POST /auth/me/invite/rotate') return { status: 200, body: this.rotateInvite(me) };
+    if ((match = /^GET \/user\/(\d+)$/.exec(route))) return { status: 200, body: this.contactProfile(me, Number(match[1])) };
 
     if (route === 'GET /friendship') return { status: 200, body: this.friendships(me) };
-    if (route === 'POST /friendship/request') return { status: 201, body: this.requestFriend(me, Number(body['friendId'])) };
+    if (route === 'POST /friendship/invite') return { status: 201, body: this.redeemInvite(me, String(body['code'] ?? '')) };
     if ((match = /^POST \/friendship\/(\d+)\/accept$/.exec(route))) return { status: 200, body: this.acceptFriend(me, Number(match[1])) };
     if ((match = /^POST \/friendship\/(\d+)\/reject$/.exec(route))) return { status: 200, body: this.rejectFriend(me, Number(match[1])) };
     if ((match = /^DELETE \/friendship\/(\d+)$/.exec(route))) {
@@ -198,6 +216,10 @@ export class DemoServer {
     if (route === 'POST /conversation/direct') return { status: 201, body: this.openDirect(me, Number(body['friendId'])) };
     if ((match = /^GET \/conversation\/(\d+)$/.exec(route))) {
       return { status: 200, body: this.conversationView(this.activeConversation(me, Number(match[1])), me) };
+    }
+    if ((match = /^POST \/conversation\/(\d+)\/destroy$/.exec(route))) {
+      this.destroy(me, Number(match[1]));
+      return { status: 204, body: null };
     }
     if ((match = /^DELETE \/conversation\/(\d+)$/.exec(route))) {
       this.leave(me, Number(match[1]));
@@ -227,6 +249,10 @@ export class DemoServer {
     const me = this.userIdFromToken(token);
     if (me === null) throw new DemoHttpError(401, 'No autorizado');
     this.activeConversation(me, conversationId);
+    const video = DEMO_VIDEO_TYPES.includes(file.type);
+    if (!video && !DEMO_IMAGE_TYPES.includes(file.type)) throw new DemoHttpError(400, 'Solo fotos (JPG, PNG, GIF, WebP) o videos (MP4, MOV, WebM)');
+    if (file.size <= 0) throw new DemoHttpError(400, 'El archivo está vacío');
+    if (file.size > (video ? 25 : 10) * 1024 * 1024) throw new DemoHttpError(413, `El archivo supera ${video ? 25 : 10} MB`);
     const attachment: DbAttachment = {
       id: this.nextId(),
       conversation_id: conversationId,
@@ -235,7 +261,8 @@ export class DemoServer {
       file_name: file.name.slice(0, 200),
       file_type: file.type,
       file_size: file.size,
-      is_image: file.type.startsWith('image/'),
+      is_image: !video,
+      is_video: video,
       data_url: file.persistable ? file.url : null,
     };
     if (!file.persistable) this.blobUrls.set(attachment.id, file.url);
@@ -259,8 +286,21 @@ export class DemoServer {
   public reset(): void {
     for (const timers of this.replyTimers.values()) timers.forEach(clearTimeout);
     this.replyTimers.clear();
+    clearTimeout(this.purgeTimer);
     this.db = seedDb();
     this.save();
+  }
+
+  /**
+   * Destroys what is past its deadline (own expiry or the 24 h retention),
+   * with its files, and tells the members, like the API's purge job.
+   */
+  public purge(now = Date.now()): void {
+    const expired = this.db.messages.filter(
+      (m) => (m.expires_at && new Date(m.expires_at).getTime() <= now) || new Date(m.created_at).getTime() + RETENTION_MS <= now,
+    );
+    if (expired.length) this.deleteMessages(expired);
+    this.schedulePurge(now);
   }
 
   // --- Auth -------------------------------------------------------------------
@@ -279,22 +319,18 @@ export class DemoServer {
     if (!isStrong(password)) throw new DemoHttpError(400, 'La contraseña debe tener al menos 8 caracteres, con mayúscula, minúscula y número');
     if (this.db.users.some((u) => u.username === username)) throw new DemoHttpError(409, 'Ese nombre de usuario ya está en uso');
     const now = new Date().toISOString();
+    // Username and password only, like the API: no name, no email.
     const user: DbUser = {
       id: this.nextId(),
       username,
-      first_name: this.cleanName(body['first_name']),
-      last_name: this.cleanName(body['last_name']),
       avatar_url: null,
       password,
       created_at: now,
       last_seen: null,
+      invite_code: newInviteCode(),
     };
     this.db.users.push(user);
-    // A welcome: Laura sends a friend request to every new account.
-    const laura = this.db.users.find((u) => u.username === 'laura.mendez');
-    if (laura) {
-      this.db.friendships.push({ id: this.nextId(), requester_id: laura.id, addressee_id: user.id, status: 'pending', created_at: now, updated_at: now });
-    }
+    // New accounts start alone: the demo hints show the codes of Luna and Sol.
     return this.session(user);
   }
 
@@ -322,10 +358,13 @@ export class DemoServer {
       if (text.length > 140) throw new DemoHttpError(400, 'El estado admite hasta 140 caracteres');
       user.status_message = text || null;
     }
-    if ('first_name' in body) user.first_name = this.cleanName(body['first_name']);
-    if ('last_name' in body) user.last_name = this.cleanName(body['last_name']);
+    if ('first_name' in body || 'last_name' in body) throw new DemoHttpError(400, 'Velo no guarda nombres reales');
+    const hidingChanged = 'hide_last_seen' in body && Boolean(body['hide_last_seen']) !== Boolean(user.hide_last_seen);
+    if ('hide_last_seen' in body) user.hide_last_seen = Boolean(body['hide_last_seen']);
+    if ('hide_typing' in body) user.hide_typing = Boolean(body['hide_typing']);
     this.save();
     this.announceProfile(user);
+    if (hidingChanged) this.broadcastPresence(user.id, true);
     return this.publicUser(user);
   }
 
@@ -355,44 +394,41 @@ export class DemoServer {
 
   // --- Users and friends ------------------------------------------------------
 
-  private search(me: number, q: string): User[] {
-    const query = normalize(q.trim());
-    if (query.length < 2) throw new DemoHttpError(400, 'Escribe al menos 2 caracteres');
-    return this.db.users
-      .filter((u) => u.id !== me)
-      .filter((u) => normalize(`${u.username} ${u.first_name ?? ''} ${u.last_name ?? ''}`).includes(query))
-      .slice(0, 20)
-      .map((u) => this.publicUser(u));
+  /** Contacts and conversation partners only: there is no user directory. */
+  private contactProfile(me: number, id: number): User {
+    const user = this.findUser(id);
+    if (!user || (id !== me && !this.contactsOf(me).includes(id))) throw new DemoHttpError(404, 'Usuario no encontrado');
+    return this.publicUser(user);
+  }
+
+  private rotateInvite(me: number): { code: string } {
+    const user = this.findUser(me)!;
+    user.invite_code = newInviteCode();
+    this.save();
+    return { code: this.formatCode(user.invite_code) };
   }
 
   private friendships(me: number): Friendship[] {
     return this.db.friendships.filter((f) => f.requester_id === me || f.addressee_id === me).map((f) => this.friendshipView(f, me));
   }
 
-  private requestFriend(me: number, friendId: number): Friendship {
-    if (friendId === me) throw new DemoHttpError(400, 'No puedes agregarte a ti mismo');
-    const friend = this.requireUser(friendId);
-    const existing = this.relation(me, friendId);
-    if (existing?.status === 'accepted') throw new DemoHttpError(409, 'Ya son amigos');
-    if (existing && existing.requester_id === me) throw new DemoHttpError(409, 'Ya enviaste una solicitud');
-    if (existing) return this.acceptFriend(me, existing.id);
+  /** Same rules as the API: unknown and own codes give the same 404; codes are single use. */
+  private redeemInvite(me: number, raw: string): Friendship {
+    const code = normalizeInvite(raw);
+    if (!/^[A-Z0-9]{8,16}$/.test(code)) throw new DemoHttpError(400, 'El código de invitación no es válido');
+    const owner = this.db.users.find((u) => u.invite_code === code);
+    if (!owner || owner.id === me) throw new DemoHttpError(404, 'Código de invitación inválido o ya usado');
+    const existing = this.relation(me, owner.id);
+    if (existing?.status === 'accepted') throw new DemoHttpError(409, 'Ya es tu contacto');
+    // Simulated people keep their printed code so every visitor can try it.
+    if (!owner.bot) owner.invite_code = newInviteCode();
     const now = new Date().toISOString();
-    const friendship: DbFriendship = { id: this.nextId(), requester_id: me, addressee_id: friendId, status: 'pending', created_at: now, updated_at: now };
+    if (existing) this.db.friendships = this.db.friendships.filter((f) => f.id !== existing.id);
+    const friendship: DbFriendship = { id: this.nextId(), requester_id: owner.id, addressee_id: me, status: 'accepted', created_at: now, updated_at: now };
     this.db.friendships.push(friendship);
     this.save();
-    this.emitTo([friendId], { type: 'friendship_updated', data: { friendshipId: friendship.id, status: 'pending' } });
-    // Simulated people accept after a moment and say hello.
-    if (friend.bot) {
-      this.later(`friend-${friendship.id}`, 2500, () => {
-        const current = this.db.friendships.find((f) => f.id === friendship.id);
-        if (!current || current.status !== 'pending') return;
-        current.status = 'accepted';
-        current.updated_at = new Date().toISOString();
-        this.save();
-        this.emitTo([me], { type: 'friendship_updated', data: { friendshipId: current.id, status: 'accepted' } });
-        this.later(`hello-${friendship.id}`, 1500, () => this.botSays(friend, me, friend.bot!.replies[0]));
-      });
-    }
+    this.emitTo([me, owner.id], { type: 'friendship_updated', data: { friendshipId: friendship.id, status: 'accepted' } });
+    if (owner.bot) this.later(`hello-${friendship.id}`, 1500, () => this.botSays(owner, me, owner.bot!.replies[0]));
     return this.friendshipView(friendship, me);
   }
 
@@ -437,7 +473,7 @@ export class DemoServer {
   private openDirect(me: number, friendId: number): Conversation {
     if (friendId === me) throw new DemoHttpError(403, 'No puedes abrir un chat contigo mismo');
     this.requireUser(friendId);
-    if (this.relation(me, friendId)?.status !== 'accepted') throw new DemoHttpError(403, 'Solo puedes chatear con tus amigos');
+    if (this.relation(me, friendId)?.status !== 'accepted') throw new DemoHttpError(403, 'Solo puedes chatear con tus contactos');
     const conversation = this.directBetween(me, friendId) ?? this.createDirect(me, friendId);
     const mine = conversation.members.find((m) => m.user_id === me)!;
     if (mine.left_at) mine.left_at = null;
@@ -467,6 +503,15 @@ export class DemoServer {
       if (existing) return { message: this.messageView(existing), created: false };
     }
     const content = typeof body['content'] === 'string' ? body['content'].trim() : '';
+    const replyToId = typeof body['reply_to_id'] === 'number' ? body['reply_to_id'] : null;
+    if (replyToId !== null && !this.db.messages.some((m) => m.id === replyToId && m.conversation_id === conversationId)) {
+      throw new DemoHttpError(400, 'El mensaje al que respondes no existe o ya se autodestruyó');
+    }
+    const expiresIn = body['expires_in'];
+    if (expiresIn !== undefined && (typeof expiresIn !== 'number' || expiresIn < 10 || expiresIn > 86400)) {
+      throw new DemoHttpError(400, 'expires_in debe estar entre 10 y 86400 segundos');
+    }
+    const viewOnce = body['view_once'] === true;
     const attachmentIds = Array.isArray(body['attachment_ids']) ? (body['attachment_ids'] as number[]) : [];
     if (content.length > MAX_MESSAGE) throw new DemoHttpError(400, `El mensaje no puede superar ${MAX_MESSAGE} caracteres`);
     if (!content && !attachmentIds.length) throw new DemoHttpError(400, 'El mensaje no puede estar vacío');
@@ -479,11 +524,13 @@ export class DemoServer {
       conversation_id: conversationId,
       sender_id: me,
       content,
-      message_type: attachments.length ? (attachments.every((a) => a!.is_image) ? 'image' : 'file') : 'text',
-      reply_to_id: null,
+      message_type: attachments.length ? (attachments.every((a) => a!.is_image) ? 'image' : attachments.every((a) => a!.is_video) ? 'video' : 'file') : 'text',
+      reply_to_id: replyToId,
       client_id: clientId,
       created_at: new Date().toISOString(),
       attachment_ids: attachmentIds,
+      expires_at: typeof expiresIn === 'number' ? new Date(Date.now() + expiresIn * 1000).toISOString() : null,
+      view_once: viewOnce,
     };
     attachments.forEach((a) => (a!.message_id = message.id));
     this.db.messages.push(message);
@@ -499,6 +546,7 @@ export class DemoServer {
       }
     }
     this.save();
+    if (message.expires_at) this.schedulePurge();
     const view = this.messageView(message);
     this.emitTo(this.memberIds(conversation), { type: 'new_message', data: view });
     for (const other of this.otherMemberIds(conversation, me)) {
@@ -520,7 +568,73 @@ export class DemoServer {
       this.save();
       this.emitTo(this.memberIds(conversation), { type: 'conversation_read', data: { conversationId, userId: me, lastReadMessageId: read } });
     }
+    this.startViewOnceTimers(me, conversation, read);
     return read;
+  }
+
+  /** Read view-once messages get a 30 s deadline, announced to both. */
+  private startViewOnceTimers(reader: number, conversation: DbConversation, upTo: number): void {
+    const deadline = new Date(Date.now() + VIEW_ONCE_MS).toISOString();
+    const opened = this.db.messages.filter(
+      (m) => m.conversation_id === conversation.id && m.view_once && !m.expires_at && m.sender_id !== reader && m.id <= upTo,
+    );
+    if (!opened.length) return;
+    opened.forEach((m) => (m.expires_at = deadline));
+    this.save();
+    this.schedulePurge();
+    this.emitTo(this.memberIds(conversation), {
+      type: 'messages_expiring',
+      data: { conversationId: conversation.id, items: opened.map((m) => ({ id: m.id, expires_at: deadline })) },
+    });
+  }
+
+  /** «Autodestruir»: messages, files and the chat itself, for both members. */
+  private destroy(me: number, id: number): void {
+    const conversation = this.db.conversations.find((c) => c.id === id && c.members.some((m) => m.user_id === me));
+    if (!conversation) throw new DemoHttpError(404, 'Conversación no encontrada');
+    for (const message of this.db.messages.filter((m) => m.conversation_id === id)) this.forgetFiles(message);
+    this.db.attachments.filter((a) => a.conversation_id === id).forEach((a) => this.revokeBlob(a.id));
+    this.db.attachments = this.db.attachments.filter((a) => a.conversation_id !== id);
+    this.db.messages = this.db.messages.filter((m) => m.conversation_id !== id);
+    this.db.conversations = this.db.conversations.filter((c) => c.id !== id);
+    for (const member of conversation.members) this.cancel(`reply-${id}-${member.user_id}`);
+    this.save();
+    this.emitTo(this.memberIds(conversation), { type: 'conversation_destroyed', data: { conversationId: id } });
+  }
+
+  private deleteMessages(messages: DbMessage[]): void {
+    const ids = new Set(messages.map((m) => m.id));
+    messages.forEach((m) => this.forgetFiles(m));
+    this.db.messages = this.db.messages.filter((m) => !ids.has(m.id));
+    // Like ON DELETE SET NULL on reply_to_id.
+    for (const m of this.db.messages) if (m.reply_to_id !== null && ids.has(m.reply_to_id)) m.reply_to_id = null;
+    this.save();
+    const byConversation = new Map<number, number[]>();
+    for (const m of messages) byConversation.set(m.conversation_id, [...(byConversation.get(m.conversation_id) ?? []), m.id]);
+    for (const [conversationId, list] of byConversation) {
+      const conversation = this.db.conversations.find((c) => c.id === conversationId);
+      if (conversation) this.emitTo(this.memberIds(conversation), { type: 'messages_deleted', data: { conversationId, ids: list } });
+    }
+  }
+
+  private forgetFiles(message: DbMessage): void {
+    for (const id of message.attachment_ids) this.revokeBlob(id);
+    const files = new Set(message.attachment_ids);
+    this.db.attachments = this.db.attachments.filter((a) => !files.has(a.id));
+  }
+
+  private revokeBlob(id: number): void {
+    const blob = this.blobUrls.get(id);
+    if (blob) URL.revokeObjectURL(blob);
+    this.blobUrls.delete(id);
+  }
+
+  /** One timer, set for the nearest explicit deadline (ephemeral or view-once). */
+  private schedulePurge(now = Date.now()): void {
+    clearTimeout(this.purgeTimer);
+    const next = this.db.messages.reduce((min, m) => (m.expires_at ? Math.min(min, new Date(m.expires_at).getTime()) : min), Infinity);
+    if (next === Infinity) return;
+    this.purgeTimer = setTimeout(() => this.purge(), Math.max(0, next - now) + 50);
   }
 
   private markDelivered(me: number, conversationId: number, messageId?: number): number {
@@ -559,9 +673,7 @@ export class DemoServer {
     const attachment = this.db.attachments.find((a) => a.id === id && a.uploader_id === me && a.message_id === null);
     if (!attachment) throw new DemoHttpError(404, 'Archivo no encontrado');
     this.db.attachments = this.db.attachments.filter((a) => a.id !== id);
-    const blob = this.blobUrls.get(id);
-    if (blob) URL.revokeObjectURL(blob);
-    this.blobUrls.delete(id);
+    this.revokeBlob(id);
     this.save();
   }
 
@@ -593,9 +705,9 @@ export class DemoServer {
   private botReadsAndAnswers(bot: DbUser, conversation: DbConversation, human: number, text: string, key: string, goOffline: boolean): void {
     this.markRead(bot.id, conversation.id);
     this.later(key, 700, () => {
-      this.emitTo([human], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: true } });
+      this.botTyping(bot, human, conversation.id, true);
       this.later(key, Math.min(1200 + text.length * 25, 3200), () => {
-        this.emitTo([human], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: false } });
+        this.botTyping(bot, human, conversation.id, false);
         this.sendMessage(bot.id, conversation.id, { content: text });
         if (goOffline) this.later(`offline-${bot.id}`, 15000, () => this.setBotOnline(bot, false));
       });
@@ -607,24 +719,29 @@ export class DemoServer {
     if (this.relation(bot.id, to)?.status !== 'accepted') return;
     const conversation = this.directBetween(bot.id, to) ?? this.createDirect(bot.id, to);
     const key = `reply-${conversation.id}-${bot.id}`;
-    this.emitTo([to], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: true } });
+    this.botTyping(bot, to, conversation.id, true);
     this.later(key, 1500, () => {
-      this.emitTo([to], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: false } });
+      this.botTyping(bot, to, conversation.id, false);
       this.sendMessage(bot.id, conversation.id, { content: text });
     });
   }
 
+  private botTyping(bot: DbUser, to: number, conversationId: number, isTyping: boolean): void {
+    if (bot.hide_typing) return;
+    this.emitTo([to], { type: 'typing', data: { conversationId, userId: bot.id, username: bot.username, isTyping } });
+  }
+
   private replyFor(bot: DbUser, human: number, message: DbMessage): string {
-    const name = this.findUser(human)?.first_name || this.findUser(human)?.username || '';
+    const name = this.findUser(human)?.username ?? '';
     const text = normalize(message.content);
     if (message.attachment_ids.length) {
-      return message.message_type === 'image' ? '¡Qué buena foto! 📸' : 'Recibido, gracias por el archivo 📎';
+      return message.message_type === 'image' ? 'Ya la vi… y ya se borró 🙈' : 'Recibido 💜';
     }
-    if (/^(hola|buenas|hey|holi|que mas|q mas|saludos)\b/.test(text)) return `¡Hola, ${name}! 👋 ¿Qué tal tu día?`;
-    if (/gracias/.test(text)) return '¡Con gusto! 😊';
-    if (/(adios|chao|hasta luego|nos vemos)/.test(text)) return '¡Hasta luego! 👋';
+    if (/^(hola|buenas|hey|holi|que mas|q mas|saludos)\b/.test(text)) return `Hola, ${name} 🌙 ¿Cómo va tu día?`;
+    if (/gracias/.test(text)) return 'Siempre 💜';
+    if (/(adios|chao|hasta luego|nos vemos|buenas noches)/.test(text)) return 'Hasta pronto. Borra el rastro 😉';
     if (text.includes('?')) {
-      const answers = ['Mmm, buena pregunta 🤔 Creo que sí.', 'Yo diría que sí 👍', 'No estoy seguro, ¿tú qué opinas?'];
+      const answers = ['Mmm… creo que sí 😏', 'Sí, cuenta conmigo', 'Dímelo tú primero 🙈'];
       return answers[message.id % answers.length];
     }
     const replies = bot.bot!.replies;
@@ -665,9 +782,10 @@ export class DemoServer {
     queueMicrotask(() => this.bus.next({ userIds, event }));
   }
 
-  private broadcastPresence(userId: number): void {
+  /** Hidden users are never announced, except the "went hidden" update itself. */
+  private broadcastPresence(userId: number, force = false): void {
     const user = this.findUser(userId);
-    if (!user) return;
+    if (!user || (user.hide_last_seen && !force)) return;
     const contacts = this.contactsOf(userId);
     if (contacts.length) this.emitTo(contacts, { type: 'presence', data: this.presenceOf(user) });
   }
@@ -698,21 +816,22 @@ export class DemoServer {
   }
 
   private presenceOf(user: DbUser): PresenceUpdate {
+    if (user.hide_last_seen) return { userId: user.id, online: false, lastSeen: null };
     const online = this.isOnline(user);
     return { userId: user.id, online, lastSeen: online ? null : user.last_seen };
   }
 
   private publicUser(user: DbUser): User {
-    const online = this.isOnline(user);
+    const presence = this.presenceOf(user);
     return {
       id: user.id,
       username: user.username,
-      first_name: user.first_name,
-      last_name: user.last_name,
       avatar_url: user.avatar_url,
       status_message: user.status_message ?? null,
-      status: online ? 'online' : 'offline',
-      last_seen: online ? null : user.last_seen,
+      status: presence.online ? 'online' : 'offline',
+      last_seen: presence.lastSeen,
+      hide_last_seen: !!user.hide_last_seen,
+      hide_typing: !!user.hide_typing,
       created_at: user.created_at,
     };
   }
@@ -751,10 +870,12 @@ export class DemoServer {
       })),
       last_message: last ? this.messageView(last) : null,
       unread_count: messages.filter((m) => m.sender_id !== me && m.id > (mine?.last_read_message_id ?? 0)).length,
+      retention_seconds: RETENTION_MS / 1000,
     };
   }
 
   private messageView(m: DbMessage): Message {
+    const quoted = m.reply_to_id === null ? undefined : this.db.messages.find((r) => r.id === m.reply_to_id);
     return {
       id: m.id,
       conversation_id: m.conversation_id,
@@ -763,8 +884,11 @@ export class DemoServer {
       content: m.content,
       message_type: m.message_type,
       reply_to_id: m.reply_to_id,
+      reply_to: quoted ? { id: quoted.id, sender_id: quoted.sender_id, content: quoted.content, message_type: quoted.message_type } : null,
       client_id: m.client_id,
       created_at: m.created_at,
+      expires_at: m.expires_at ?? null,
+      view_once: !!m.view_once,
       attachments: m.attachment_ids
         .map((id) => this.db.attachments.find((a) => a.id === id))
         .filter((a): a is DbAttachment => !!a)
@@ -773,7 +897,15 @@ export class DemoServer {
   }
 
   private attachmentView(a: DbAttachment): Attachment {
-    return { id: a.id, message_id: a.message_id, file_name: a.file_name, file_type: a.file_type, file_size: a.file_size, is_image: a.is_image };
+    return {
+      id: a.id,
+      message_id: a.message_id,
+      file_name: a.file_name,
+      file_type: a.file_type,
+      file_size: a.file_size,
+      is_image: a.is_image,
+      is_video: !!a.is_video,
+    };
   }
 
   private activeConversation(me: number, id: number): DbConversation {
@@ -826,9 +958,9 @@ export class DemoServer {
     return user;
   }
 
-  private cleanName(value: unknown): string | null {
-    const text = typeof value === 'string' ? value.trim().slice(0, 50) : '';
-    return text || null;
+  /** "K7QM2XRP9D" → "K7QM-2XRP-9D", as the API shows it. */
+  private formatCode(code: string): string {
+    return [code.slice(0, 4), code.slice(4, 8), code.slice(8)].filter(Boolean).join('-');
   }
 
   private nextId(): number {

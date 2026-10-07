@@ -43,7 +43,7 @@ describe('AuthStore + authInterceptor', () => {
     await login();
     expect(store.user()?.username).toBe('ana');
     expect(store.token()).toBe('access-1');
-    expect(localStorage.getItem('jfchat.refresh')).toBe('refresh-1');
+    expect(localStorage.getItem('velo.session')).toBe('refresh-1');
     expect(JSON.stringify(localStorage)).not.toContain('access-1');
   });
 
@@ -74,7 +74,7 @@ describe('AuthStore + authInterceptor', () => {
     retryA.flush('A');
     retryB.flush('B');
     expect(await Promise.all([a, b])).toEqual(['A', 'B']);
-    expect(localStorage.getItem('jfchat.refresh')).toBe('refresh-2');
+    expect(localStorage.getItem('velo.session')).toBe('refresh-2');
   });
 
   it('ends the session and redirects when the refresh token is rejected', async () => {
@@ -84,7 +84,7 @@ describe('AuthStore + authInterceptor', () => {
     http.expectOne(`${API}/auth/refresh`).flush(null, { status: 401, statusText: 'Unauthorized' });
     await expect(request).rejects.toBeTruthy();
     expect(store.user()).toBeNull();
-    expect(localStorage.getItem('jfchat.refresh')).toBeNull();
+    expect(localStorage.getItem('velo.session')).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login'], { queryParams: { sesion: 'expirada' } });
   });
 
@@ -94,17 +94,19 @@ describe('AuthStore + authInterceptor', () => {
     http.expectOne(`${API}/a`).flush(null, { status: 401, statusText: 'Unauthorized' });
     http.expectOne(`${API}/auth/refresh`).error(new ProgressEvent('error'));
     await expect(request).rejects.toBeTruthy();
-    expect(localStorage.getItem('jfchat.refresh')).toBe('refresh-1');
+    expect(localStorage.getItem('velo.session')).toBe('refresh-1');
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('restores the session from the stored refresh token', async () => {
+  it('restores the session from a token saved before the Velo rename (and moves it)', async () => {
     localStorage.setItem('jfchat.refresh', 'refresh-9');
     const restored = store.restore();
     http.expectOne(`${API}/auth/refresh`).flush(session(user(1, 'ana'), 10));
     await restored;
     expect(store.isAuthenticated()).toBe(true);
     expect(store.token()).toBe('access-10');
+    expect(localStorage.getItem('jfchat.refresh')).toBeNull();
+    expect(localStorage.getItem('velo.session')).toBe('refresh-10');
   });
 
   it('revokes the refresh token on logout', async () => {
@@ -113,5 +115,46 @@ describe('AuthStore + authInterceptor', () => {
     expect(store.user()).toBeNull();
     expect(http.expectOne(`${API}/auth/logout`).request.body).toEqual({ refreshToken: 'refresh-1' });
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
+  });
+
+  describe('PIN', () => {
+    it('seals the stored session with the PIN and resumes it only with the right one', async () => {
+      await login();
+      await store.enablePin('4821');
+      const sealed = localStorage.getItem('velo.session')!;
+      expect(sealed.startsWith('pin1.')).toBe(true);
+      expect(sealed).not.toContain('refresh-1');
+      expect(store.pinEnabled()).toBe(true);
+
+      // A fresh start (new store) cannot use the sealed token without the PIN.
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(), { provide: API_URL, useValue: API }],
+      });
+      http = TestBed.inject(HttpTestingController);
+      store = TestBed.inject(AuthStore);
+      await store.restore();
+      http.expectNone(`${API}/auth/refresh`);
+      expect(store.hasPin()).toBe(true);
+      await expect(store.unlockWithPin('0000')).resolves.toBe(false);
+
+      const unlocked = store.unlockWithPin('4821');
+      await vi.waitFor(() => http.expectOne(`${API}/auth/refresh`).flush(session(user(1, 'ana'), 2)));
+      await expect(unlocked).resolves.toBe(true);
+      expect(store.user()?.username).toBe('ana');
+      // The rotated token is sealed again, never stored in clear.
+      await vi.waitFor(() => expect(localStorage.getItem('velo.session')).not.toBe(sealed));
+      expect(localStorage.getItem('velo.session')!.startsWith('pin1.')).toBe(true);
+      expect(JSON.stringify(localStorage)).not.toContain('refresh-2');
+    });
+
+    it('removing the PIN needs the PIN and stores the session in clear again', async () => {
+      await login();
+      await store.enablePin('123456');
+      await expect(store.disablePin('000000')).resolves.toBe(false);
+      await expect(store.disablePin('123456')).resolves.toBe(true);
+      expect(localStorage.getItem('velo.session')).toBe('refresh-1');
+      expect(store.pinEnabled()).toBe(false);
+    });
   });
 });

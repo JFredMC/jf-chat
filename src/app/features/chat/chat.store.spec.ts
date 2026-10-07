@@ -6,7 +6,7 @@ import type { Message, User } from '../../core/models';
 import { ToastService } from '../../core/ui/toast.service';
 import { conversation, message, user } from '../../testing/fixtures';
 import { ChatApi } from './chat.api';
-import { ChatStore } from './chat.store';
+import { ChatStore, deadlineOf } from './chat.store';
 
 describe('ChatStore', () => {
   const ana = user(1, 'ana');
@@ -21,6 +21,7 @@ describe('ChatStore', () => {
     conversation: vi.fn(),
     openDirect: vi.fn(),
     leave: vi.fn(),
+    destroy: vi.fn(),
   };
   const toast = { error: vi.fn(), info: vi.fn(), success: vi.fn() };
 
@@ -180,5 +181,82 @@ describe('ChatStore', () => {
     store.reset();
     expect(store.conversations()).toEqual([]);
     expect(store.activeId()).toBeNull();
+  });
+
+  describe('self-destruction', () => {
+    const at = (iso: string) => new Date(iso).getTime();
+
+    it('a deadline is the own expiry or the retention, whichever comes first', () => {
+      const created = '2026-10-03T10:00:00Z';
+      expect(deadlineOf({ created_at: created, expires_at: null })).toBe(at('2026-10-04T10:00:00Z'));
+      expect(deadlineOf({ created_at: created, expires_at: '2026-10-03T10:05:00Z' })).toBe(at('2026-10-03T10:05:00Z'));
+      expect(deadlineOf({ created_at: created, expires_at: null }, 60)).toBe(at('2026-10-03T10:01:00Z'));
+    });
+
+    it('sends a reply with its quote, and ephemeral options, then clears the reply', async () => {
+      await store.select(10);
+      const quoted = store.activeThread()!.messages[0];
+      store.reply(quoted);
+      store.setOptions({ expiresIn: 300 });
+      store.send('te respondo');
+      const pending = store.activeThread()!.messages.at(-1)!;
+      expect(pending.reply_to).toMatchObject({ id: quoted.id, content: quoted.content });
+      expect(pending.expires_at).toBeTruthy();
+      const body = api.send.mock.calls.at(-1)![1];
+      expect(body).toMatchObject({ content: 'te respondo', reply_to_id: quoted.id });
+      expect(body.expires_in).toBeGreaterThanOrEqual(299);
+      expect(store.replyingTo()).toBeNull();
+      // Options stick to the chat until changed.
+      expect(store.sendOptions()).toEqual({ expiresIn: 300, viewOnce: false });
+      store.setOptions({ expiresIn: null, viewOnce: true });
+      store.send('una vez');
+      expect(api.send.mock.calls.at(-1)![1]).toMatchObject({ content: 'una vez', view_once: true });
+      expect(api.send.mock.calls.at(-1)![1].expires_in).toBeUndefined();
+    });
+
+    it('drops destroyed messages, the quotes that pointed to them and fixes the preview', async () => {
+      api.messages.mockReturnValueOnce(
+        of({ items: [message(1, 10, 2), message(2, 10, 1, { reply_to_id: 1, reply_to: { id: 1, sender_id: 2, content: 'secreto', message_type: 'text' } })], hasMore: false }),
+      );
+      await store.select(10);
+      store.receive(message(3, 10, 2));
+      store.applyDeleted(10, [1, 3]);
+      const messages = store.activeThread()!.messages;
+      expect(messages.map((m) => m.id)).toEqual([2]);
+      expect(messages[0].reply_to).toBeNull();
+      expect(store.active()?.last_message?.id).toBe(2);
+    });
+
+    it('prunes on time on the client and starts view-once timers when told', async () => {
+      await store.select(10);
+      const [first] = store.activeThread()!.messages;
+      store.applyExpiring(10, [{ id: first.id, expires_at: '2026-10-03T10:00:30Z' }]);
+      expect(store.activeThread()!.messages[0].expires_at).toBe('2026-10-03T10:00:30Z');
+      store.pruneExpired(at('2026-10-03T10:00:31Z'));
+      expect(store.activeThread()!.messages.map((m) => m.id)).toEqual([2]);
+      // And everything goes after 24 h.
+      store.pruneExpired(at('2026-10-05T00:00:00Z'));
+      expect(store.activeThread()!.messages).toEqual([]);
+      expect(store.active()?.last_message).toBeNull();
+    });
+
+    it('«Autodestruir» removes the chat for me; the other side hears about it', async () => {
+      api.destroy.mockReturnValue(of(undefined));
+      await store.select(10);
+      expect(await store.destroy(10)).toBe(true);
+      expect(api.destroy).toHaveBeenCalledWith(10);
+      expect(store.conversations().map((c) => c.id)).toEqual([20]);
+      expect(store.activeId()).toBeNull();
+      store.applyDestroyed(20);
+      expect(store.conversations()).toEqual([]);
+      expect(toast.info).toHaveBeenCalledWith('El chat se autodestruyó. No queda nada.');
+    });
+
+    it('keeps the chat when the destruction fails', async () => {
+      api.destroy.mockReturnValue(throwError(() => new Error('x')));
+      expect(await store.destroy(10)).toBe(false);
+      expect(store.conversations()).toHaveLength(2);
+      expect(toast.error).toHaveBeenCalled();
+    });
   });
 });
