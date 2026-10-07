@@ -111,6 +111,7 @@ export class ConversationListComponent {
     const prefix = message.sender_id === this.meId() ? 'Tú: ' : '';
     if (message.content) return prefix + message.content;
     if (message.message_type === 'image') return `${prefix}📷 Foto`;
+    if (message.message_type === 'video') return `${prefix}🎬 Video`;
     if (message.attachments?.length || message.message_type === 'file') return `${prefix}📎 Archivo`;
     return prefix;
   }

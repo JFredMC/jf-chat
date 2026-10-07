@@ -40,6 +40,9 @@ export interface DemoResponse {
   body: unknown;
 }
 
+const DEMO_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const DEMO_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
+
 export interface DemoFile {
   name: string;
   type: string;
@@ -182,6 +185,8 @@ export class DemoServer {
       this.save();
       return { status: 204, body: null };
     }
+    // The demo never sends push notifications.
+    if (route === 'GET /push/public-key') return { status: 200, body: { publicKey: null } };
     if (route === 'GET /auth/username-available') {
       const username = (request.query.get('username') ?? '').trim().toLowerCase();
       return { status: 200, body: { available: !this.db.users.some((u) => u.username === username) } };
@@ -244,6 +249,10 @@ export class DemoServer {
     const me = this.userIdFromToken(token);
     if (me === null) throw new DemoHttpError(401, 'No autorizado');
     this.activeConversation(me, conversationId);
+    const video = DEMO_VIDEO_TYPES.includes(file.type);
+    if (!video && !DEMO_IMAGE_TYPES.includes(file.type)) throw new DemoHttpError(400, 'Solo fotos (JPG, PNG, GIF, WebP) o videos (MP4, MOV, WebM)');
+    if (file.size <= 0) throw new DemoHttpError(400, 'El archivo está vacío');
+    if (file.size > (video ? 25 : 10) * 1024 * 1024) throw new DemoHttpError(413, `El archivo supera ${video ? 25 : 10} MB`);
     const attachment: DbAttachment = {
       id: this.nextId(),
       conversation_id: conversationId,
@@ -252,7 +261,8 @@ export class DemoServer {
       file_name: file.name.slice(0, 200),
       file_type: file.type,
       file_size: file.size,
-      is_image: file.type.startsWith('image/'),
+      is_image: !video,
+      is_video: video,
       data_url: file.persistable ? file.url : null,
     };
     if (!file.persistable) this.blobUrls.set(attachment.id, file.url);

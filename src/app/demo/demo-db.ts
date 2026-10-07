@@ -86,7 +86,7 @@ export interface DemoDb {
   refreshTokens: Record<string, number>;
 }
 
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 export const STORAGE_KEY = 'velo.demo.db';
 /** Before the Velo rename; dropped on load. */
 const LEGACY_STORAGE_KEY = 'jfchat.demo.db';
@@ -216,6 +216,7 @@ export function seedDb(now = Date.now()): DemoDb {
     luna,
     [
       [luna, '¿Ya saliste? 🌙', 60 * 5],
+      [luna, '', 60 * 5 - 1],
       [me, 'Recién. Hoy fue eterno', 60 * 5 - 2],
       [luna, 'Te guardé un abrazo largo para esta noche', 60 * 5 - 3],
       [me, 'Lo cobro sin falta 😌', 60 * 5 - 4],
@@ -229,6 +230,22 @@ export function seedDb(now = Date.now()): DemoDb {
   // A reply with its quote, and an ephemeral message with a visible countdown.
   const hug = db.messages.find((m) => m.content.startsWith('Te guardé'))!;
   db.messages.find((m) => m.content.startsWith('Lo cobro'))!.reply_to_id = hug.id;
+  // A photo: only visible while holding it, with a watermark.
+  const photo = db.messages.find((m) => m.content === '')!;
+  const photoId = id();
+  photo.message_type = 'image';
+  photo.attachment_ids = [photoId];
+  db.attachments.push({
+    id: photoId,
+    conversation_id: photo.conversation_id,
+    uploader_id: luna.id,
+    message_id: photo.id,
+    file_name: 'luna.webp',
+    file_type: 'image/webp',
+    file_size: 6850,
+    is_image: true,
+    data_url: 'images/demo-foto.webp',
+  });
   const ephemeral = db.messages.find((m) => m.content.startsWith('Y este'))!;
   ephemeral.expires_at = new Date(new Date(ephemeral.created_at).getTime() + 60 * 60_000).toISOString();
   db.seq = seq;

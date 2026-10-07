@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input, output, signal } from '@angular/core';
 import { displayName } from '../../core/models';
 import { timeLabel } from '../../shared/time';
-import { AttachmentViewComponent } from './attachment-view.component';
+import { SecureMediaComponent } from './secure-media.component';
 import { DEFAULT_RETENTION_SECONDS, deadlineOf, type DeliveryState, type UiMessage } from './chat.store';
 import { linkify } from './linkify';
 import { MessageStatusComponent } from './message-status.component';
@@ -21,7 +21,7 @@ export function countdownLabel(ms: number): string {
 
 @Component({
   selector: 'app-message-bubble',
-  imports: [MessageStatusComponent, AttachmentViewComponent],
+  imports: [MessageStatusComponent, SecureMediaComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     class: 'group/msg relative flex w-full',
@@ -73,7 +73,7 @@ export function countdownLabel(ms: number): string {
         @if (message().attachments?.length) {
           <div class="mb-1 flex flex-col gap-1.5">
             @for (attachment of message().attachments; track attachment.id) {
-              <app-attachment-view [attachment]="attachment" />
+              <app-secure-media [attachment]="attachment" />
             }
           </div>
         }

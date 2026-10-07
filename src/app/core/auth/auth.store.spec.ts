@@ -116,4 +116,45 @@ describe('AuthStore + authInterceptor', () => {
     expect(http.expectOne(`${API}/auth/logout`).request.body).toEqual({ refreshToken: 'refresh-1' });
     expect(router.navigate).toHaveBeenCalledWith(['/auth/login']);
   });
+
+  describe('PIN', () => {
+    it('seals the stored session with the PIN and resumes it only with the right one', async () => {
+      await login();
+      await store.enablePin('4821');
+      const sealed = localStorage.getItem('velo.session')!;
+      expect(sealed.startsWith('pin1.')).toBe(true);
+      expect(sealed).not.toContain('refresh-1');
+      expect(store.pinEnabled()).toBe(true);
+
+      // A fresh start (new store) cannot use the sealed token without the PIN.
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [provideRouter([]), provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(), { provide: API_URL, useValue: API }],
+      });
+      http = TestBed.inject(HttpTestingController);
+      store = TestBed.inject(AuthStore);
+      await store.restore();
+      http.expectNone(`${API}/auth/refresh`);
+      expect(store.hasPin()).toBe(true);
+      await expect(store.unlockWithPin('0000')).resolves.toBe(false);
+
+      const unlocked = store.unlockWithPin('4821');
+      await vi.waitFor(() => http.expectOne(`${API}/auth/refresh`).flush(session(user(1, 'ana'), 2)));
+      await expect(unlocked).resolves.toBe(true);
+      expect(store.user()?.username).toBe('ana');
+      // The rotated token is sealed again, never stored in clear.
+      await vi.waitFor(() => expect(localStorage.getItem('velo.session')).not.toBe(sealed));
+      expect(localStorage.getItem('velo.session')!.startsWith('pin1.')).toBe(true);
+      expect(JSON.stringify(localStorage)).not.toContain('refresh-2');
+    });
+
+    it('removing the PIN needs the PIN and stores the session in clear again', async () => {
+      await login();
+      await store.enablePin('123456');
+      await expect(store.disablePin('000000')).resolves.toBe(false);
+      await expect(store.disablePin('123456')).resolves.toBe(true);
+      expect(localStorage.getItem('velo.session')).toBe('refresh-1');
+      expect(store.pinEnabled()).toBe(false);
+    });
+  });
 });
