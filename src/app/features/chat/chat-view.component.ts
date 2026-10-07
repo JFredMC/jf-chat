@@ -58,11 +58,11 @@ export class ChatViewComponent {
 
   protected readonly other = computed(() => this.store.otherMember(this.conversation()));
   protected readonly title = computed(() => this.conversation().name || displayName(this.other()?.user));
-  protected readonly statusLabel = computed(() => this.presence.label(this.other()?.user_id, this.other()?.user.last_seen));
+  protected readonly statusLabel = computed(() => this.presence.label(this.other()?.user_id, this.other()?.user.last_seen, !!this.other()?.user.hide_last_seen));
   protected readonly typingName = computed(() => {
     const ids = this.presence.typingIn(this.conversation().id);
     const member = this.conversation().members.find((m) => m.user_id === ids[0]);
-    return member ? member.user.first_name || member.user.username : 'Alguien';
+    return member ? member.user.username : 'Alguien';
   });
   protected readonly typingLabel = computed(() => (this.presence.typingIn(this.conversation().id).length ? 'escribiendo…' : ''));
 

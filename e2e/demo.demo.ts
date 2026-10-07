@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 /**
  * Public demo (GitHub Pages): the whole app runs against the in-browser
- * backend, with simulated friends. Paths are relative to /jf-chat/.
+ * backend, with a simulated partner. Paths are relative to /jf-chat/.
  */
 
 const PNG_1X1 = Buffer.from(
@@ -14,7 +14,7 @@ async function loginAsDemo(page: Page) {
   await page.goto('auth/login');
   await page.getByTestId('demo-login').click();
   await expect(page).toHaveURL(/\/chat$/);
-  await expect(page.getByTestId('me-name')).toHaveText('Invitado Demo');
+  await expect(page.getByTestId('me-name')).toHaveText('demo');
 }
 
 async function openChat(page: Page, name: string) {
@@ -41,70 +41,68 @@ test.beforeEach(async ({ page }) => {
   await page.reload();
 });
 
-test('the demo account has chats with history, unread messages and presence', async ({ page }) => {
+test('the demo account has a chat with history, unread messages and presence', async ({ page }) => {
   await expect(page.getByText('Modo demo:')).toBeVisible();
+  await expect(page).toHaveTitle('Iniciar sesión · Velo');
   await loginAsDemo(page);
-  await expect(page.getByTestId('demo-banner')).toContainText('amigos son simulados');
+  await expect(page.getByTestId('demo-banner')).toContainText('pareja es simulada');
 
-  const laura = page.getByTestId('conversation-item').filter({ hasText: 'Laura Méndez' });
-  await expect(laura.getByTestId('unread-badge')).toHaveText('2');
-  await expect(page).toHaveTitle('(2) JfChat');
-  await expect(laura.getByTestId('presence-dot')).toBeVisible();
-  await expect(page.getByTestId('conversation-item')).toHaveCount(3);
+  const luna = page.getByTestId('conversation-item').filter({ hasText: 'luna' });
+  await expect(luna.getByTestId('unread-badge')).toHaveText('2');
+  await expect(page).toHaveTitle('(2) Velo');
+  await expect(luna.getByTestId('presence-dot')).toBeVisible();
+  await expect(page.getByTestId('conversation-item')).toHaveCount(1);
 
-  await openChat(page, 'Laura Méndez');
+  await openChat(page, 'luna');
   await expect(page.getByTestId('chat-status')).toHaveText('en línea');
-  await expect(page.getByTestId('message').filter({ hasText: 'Almorzamos mañana' })).toBeVisible();
-  await expect(page).toHaveTitle('JfChat');
+  await expect(page.getByTestId('message').filter({ hasText: 'abrazo largo' })).toBeVisible();
+  await expect(page).toHaveTitle('Velo');
   await backToList(page);
-  await expect(laura.getByTestId('unread-badge')).toHaveCount(0);
+  await expect(luna.getByTestId('unread-badge')).toHaveCount(0);
 });
 
 test('a conversation in real time: ticks, typing indicator and reply', async ({ page }) => {
   await loginAsDemo(page);
-  await openChat(page, 'Laura Méndez');
-  await send(page, 'Hola Laura, ¿cómo estás?');
+  await openChat(page, 'luna');
+  await send(page, 'Hola, ¿cómo va todo?');
 
-  await expect(page.getByTestId('message').last()).toContainText('Hola Laura');
+  await expect(page.getByTestId('message').last()).toContainText('¿cómo va todo?');
   await expect(lastOwnStatus(page)).toHaveAttribute('data-status', 'read', { timeout: 6000 });
-  await expect(page.getByTestId('typing-indicator')).toContainText('Laura está escribiendo');
-  await expect(page.getByTestId('message').last()).toContainText('¡Hola, Invitado!', { timeout: 8000 });
+  await expect(page.getByTestId('typing-indicator')).toContainText('luna está escribiendo');
+  await expect(page.getByTestId('message').last()).toContainText('Hola, demo', { timeout: 8000 });
   await expect(page.getByTestId('typing-indicator')).toHaveCount(0);
 });
 
-test('offline friends receive the message later and come online to answer', async ({ page }) => {
-  await loginAsDemo(page);
-  await openChat(page, 'Sofía Ramírez');
-  await expect(page.getByTestId('chat-status')).toContainText('visto');
-  await send(page, '¿Estás ahí?');
-  await expect(lastOwnStatus(page)).toHaveAttribute('data-status', 'sent');
-  await expect(page.getByTestId('chat-status')).toHaveText(/en línea|escribiendo/, { timeout: 10_000 });
-  await expect(page.getByTestId('message').last()).toContainText('sin señal', { timeout: 12_000 });
-});
-
-test('accepting a friend request: the new friend writes first', async ({ page }) => {
+test('contacts only through invite codes: no search, redeem a code and the contact writes first', async ({ page }) => {
   await loginAsDemo(page);
   await page.getByTestId('tab-friends').click();
-  const request = page.getByTestId('incoming-requests');
-  await expect(request).toContainText('Andrés Pérez');
-  await request.getByRole('button', { name: 'Aceptar' }).click();
-  await expect(page.getByTestId('friends-list')).toContainText('Andrés Pérez');
+  await expect(page.getByTestId('user-search')).toHaveCount(0);
 
-  await page.getByRole('tab', { name: /Chats/ }).click();
-  const andres = page.getByTestId('conversation-item').filter({ hasText: 'Andrés Pérez' });
-  await expect(andres).toContainText('¡Gracias por aceptar!', { timeout: 8000 });
-  await expect(andres.getByTestId('unread-badge')).toHaveText('1');
-});
+  // My own code is hidden until I reveal it.
+  const panel = page.locator('#panel-friends');
+  const mine = panel.getByTestId('my-invite');
+  await expect(mine.getByTestId('invite-code')).toHaveText('••••-••••-••');
+  await mine.getByTestId('invite-reveal').click();
+  await expect(mine.getByTestId('invite-code')).toHaveText(/^\s*[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}\s*$/);
+  const before = await mine.getByTestId('invite-code').textContent();
+  await mine.getByTestId('invite-rotate').click();
+  await expect(page.getByText('Código nuevo')).toBeVisible();
+  await expect(mine.getByTestId('invite-code')).not.toHaveText(before!);
 
-test('searching and adding someone: they accept on their own', async ({ page }) => {
-  await loginAsDemo(page);
-  await page.getByTestId('tab-friends').click();
-  await page.getByTestId('user-search').fill('valen');
-  const results = page.getByTestId('search-results');
-  await expect(results).toContainText('Valentina Castro');
-  await results.getByRole('button', { name: 'Agregar' }).click();
-  await expect(page.getByText('Tienes un nuevo amigo')).toBeVisible({ timeout: 6000 });
-  await expect(page.getByTestId('friends-list')).toContainText('Valentina Castro');
+  const redeem = panel.getByTestId('redeem-invite');
+  await redeem.getByTestId('redeem-input').fill('zzzzzzzzzz');
+  await expect(redeem.getByTestId('redeem-input')).toHaveValue('ZZZZ-ZZZZ-ZZ');
+  await redeem.getByTestId('redeem-submit').click();
+  await expect(page.getByText('Código de invitación inválido o ya usado')).toBeVisible();
+
+  const code = await page.getByTestId('demo-code').textContent();
+  await redeem.getByTestId('redeem-input').fill(code!.toLowerCase());
+  await redeem.getByTestId('redeem-submit').click();
+  await expect(page.getByText('sol ya es tu contacto')).toBeVisible();
+  // Sol hides their last seen: no presence, ever.
+  await expect(page.getByTestId('chat-title')).toHaveText('sol');
+  await expect(page.getByTestId('message').last()).toContainText('Usaste mi código', { timeout: 8000 });
+  await expect(page.getByTestId('chat-status')).toHaveText('última conexión oculta');
 });
 
 test('Mi perfil: photo with preview, personal status and back to initials', async ({ page }) => {
@@ -130,8 +128,8 @@ test('Mi perfil: photo with preview, personal status and back to initials', asyn
 
   await expect(page.getByTestId('me-status')).toHaveText('🎧 Probando la demo');
   await expect(page.locator('aside header').getByTestId('avatar-img')).toBeVisible();
-  // Friends show their status in the list.
-  await expect(page.getByTestId('conversation-item').filter({ hasText: 'Laura Méndez' }).getByTestId('conversation-status-message')).toContainText('Con café');
+  // Contacts show their status in the list.
+  await expect(page.getByTestId('conversation-item').filter({ hasText: 'luna' }).getByTestId('conversation-status-message')).toContainText('Solo para ti');
 
   await page.getByTestId('open-profile').click();
   await dialog.getByTestId('avatar-remove').click();
@@ -143,7 +141,33 @@ test('Mi perfil: photo with preview, personal status and back to initials', asyn
   await expect(page.getByTestId('me-status')).toHaveText('@demo');
 });
 
-test('the "Nuevo chat" button opens a chat with a friend or sends a request', async ({ page }) => {
+test('privacy toggles: hide last seen and typing, discreet mode renames the app', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
+  await expect(dialog.getByLabel('Nombre')).toHaveCount(0);
+  await dialog.getByTestId('hide-last-seen').check();
+  await expect(page.getByText('Privacidad actualizada')).toBeVisible();
+  await dialog.getByTestId('hide-typing').check();
+  // The demo answers with a simulated network delay: wait until it is stored.
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('velo.demo.db')!).users[0].hide_typing)).toBe(true);
+  await dialog.getByTestId('disguise').check();
+  await expect(page).toHaveTitle('Notas');
+  await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', 'manifest-discreto.webmanifest');
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+
+  // Survives a reload (applied before the first paint by boot.js) and hides the unread count.
+  await page.reload();
+  await expect(page).toHaveTitle('Notas');
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', 'icons/notas.ico');
+  await page.getByTestId('open-profile').click();
+  await expect(dialog.getByTestId('hide-last-seen')).toBeChecked();
+  await expect(dialog.getByTestId('hide-typing')).toBeChecked();
+  await dialog.getByTestId('disguise').uncheck();
+  await expect(page).toHaveTitle(/Velo$/);
+});
+
+test('the "Nuevo chat" button opens a chat with a contact or connects with a code', async ({ page }) => {
   await loginAsDemo(page);
   const fab = page.getByRole('button', { name: 'Nuevo chat' });
   await expect(fab).toBeVisible();
@@ -155,22 +179,18 @@ test('the "Nuevo chat" button opens a chat with a friend or sends a request', as
 
   await fab.click();
   const dialog = page.getByRole('dialog', { name: 'Nuevo chat' });
-  await expect(dialog.getByTestId('new-chat-friends')).toContainText('Sofía Ramírez');
-  await dialog.getByTestId('new-chat-search').fill('valen');
-  await expect(dialog.getByTestId('new-chat-results')).toContainText('Valentina Castro');
-  await dialog.getByRole('button', { name: 'Enviar solicitud de amistad a Valentina Castro' }).click();
-  await expect(dialog.getByText('Solicitud enviada')).toBeVisible();
-
-  await dialog.getByTestId('new-chat-search').fill('sofi');
-  await dialog.getByRole('button', { name: 'Chatear con Sofía Ramírez' }).click();
+  await expect(dialog.getByTestId('new-chat-friends')).toContainText('luna');
+  await expect(dialog.getByTestId('redeem-invite')).toBeVisible();
+  await expect(dialog.getByTestId('my-invite')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Chatear con luna' }).click();
   await expect(dialog).toBeHidden();
-  await expect(page.getByTestId('chat-title')).toHaveText('Sofía Ramírez');
-  await expect(page.getByTestId('chat-status-message')).toContainText('De viaje');
+  await expect(page.getByTestId('chat-title')).toHaveText('luna');
+  await expect(page.getByTestId('chat-status-message')).toContainText('Solo para ti');
 });
 
 test('sending an image attachment', async ({ page }) => {
   await loginAsDemo(page);
-  await openChat(page, 'Carlos Rincón');
+  await openChat(page, 'luna');
   await page.getByTestId('file-input').setInputFiles({ name: 'captura.png', mimeType: 'image/png', buffer: PNG_1X1 });
   await expect(page.getByTestId('attachment-tray')).toContainText('captura.png');
   await expect(page.getByTestId('send')).toBeEnabled();
@@ -179,12 +199,12 @@ test('sending an image attachment', async ({ page }) => {
   const sent = page.getByTestId('message').filter({ has: page.getByRole('img', { name: 'captura.png' }) });
   await expect(sent).toBeVisible();
   await expect(page.getByTestId('attachment-tray')).toHaveCount(0);
-  await expect(page.getByTestId('message').last()).toContainText('¡Qué buena foto!', { timeout: 8000 });
+  await expect(page.getByTestId('message').last()).toContainText('Ya la vi', { timeout: 8000 });
 });
 
 test('rejects files the API would not accept', async ({ page }) => {
   await loginAsDemo(page);
-  await openChat(page, 'Carlos Rincón');
+  await openChat(page, 'luna');
   await page.getByTestId('file-input').setInputFiles({ name: 'programa.exe', mimeType: 'application/x-msdownload', buffer: Buffer.from('MZ') });
   await expect(page.getByText('solo imágenes')).toBeVisible();
   await expect(page.getByTestId('attachment-tray')).toHaveCount(0);
@@ -192,7 +212,7 @@ test('rejects files the API would not accept', async ({ page }) => {
 
 test('messages are text: markup is shown, never executed', async ({ page }) => {
   await loginAsDemo(page);
-  await openChat(page, 'Carlos Rincón');
+  await openChat(page, 'luna');
   let dialog = false;
   page.on('dialog', async (d) => {
     dialog = true;
@@ -205,20 +225,23 @@ test('messages are text: markup is shown, never executed', async ({ page }) => {
   expect(dialog).toBe(false);
 });
 
-test('registering a new account; the session survives a reload', async ({ page }) => {
+test('registering asks only for a username and a password; the session survives a reload', async ({ page }) => {
   await page.goto('auth/register');
-  await page.getByLabel('Nombre').fill('Marta');
+  await expect(page.getByLabel('Nombre')).toHaveCount(0);
+  await expect(page.getByLabel(/correo/i)).toHaveCount(0);
   await page.getByLabel('Usuario').fill('marta.e2e');
   await expect(page.getByText('Disponible')).toBeVisible();
   await page.getByLabel('Contraseña', { exact: true }).fill('Secreta123');
   await page.getByLabel('Repite la contraseña').fill('Secreta123');
   await page.getByRole('button', { name: 'Crear cuenta' }).click();
   await expect(page).toHaveURL(/\/chat$/);
-  await expect(page.getByTestId('me-name')).toHaveText('Marta');
-  await expect(page.getByTestId('tab-friends')).toContainText('1');
+  await expect(page.getByTestId('me-name')).toHaveText('marta.e2e');
+  await expect(page.getByTestId('conversation-item')).toHaveCount(0);
 
   await page.reload();
-  await expect(page.getByTestId('me-name')).toHaveText('Marta');
+  await expect(page.getByTestId('me-name')).toHaveText('marta.e2e');
+  // The refresh token lives under the Velo key, nothing under the old one.
+  expect(await page.evaluate(() => [!!localStorage.getItem('velo.session'), localStorage.getItem('jfchat.refresh')])).toEqual([true, null]);
 
   await page.goto('auth/register');
   await expect(page).toHaveURL(/\/chat$/);
@@ -243,21 +266,22 @@ test('guards, deep links and the not-found page', async ({ page }) => {
   await expect(page).toHaveURL(/\/chat$/);
 });
 
-test('logout, dark theme and demo reset', async ({ page }) => {
+test('logout, dark theme by default and demo reset', async ({ page }) => {
   await loginAsDemo(page);
-  await page.getByRole('button', { name: 'Usar tema oscuro' }).click();
   await expect(page.locator('html')).toHaveClass(/dark/);
+  await page.getByRole('button', { name: 'Usar tema claro' }).click();
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
   await page.reload();
-  await expect(page.locator('html')).toHaveClass(/dark/);
+  await expect(page.locator('html')).not.toHaveClass(/dark/);
 
-  await openChat(page, 'Carlos Rincón');
+  await openChat(page, 'luna');
   await send(page, 'Mensaje que se borra al reiniciar');
   await backToList(page);
   await page.getByTestId('demo-banner').getByRole('button', { name: 'Reiniciar' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Reiniciar' }).click();
   await expect(page).toHaveURL(/\/auth\/login$/);
   await loginAsDemo(page);
-  await expect(page.getByTestId('conversation-item').filter({ hasText: 'Carlos Rincón' })).not.toContainText('Mensaje que se borra');
+  await expect(page.getByTestId('conversation-item').filter({ hasText: 'luna' })).not.toContainText('Mensaje que se borra');
 
   await page.getByTestId('logout').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Cerrar sesión' }).click();
@@ -269,9 +293,28 @@ test('logout, dark theme and demo reset', async ({ page }) => {
 test('on phones the list and the chat take turns', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'mobile layout only');
   await loginAsDemo(page);
-  await openChat(page, 'Laura Méndez');
+  await openChat(page, 'luna');
   await expect(page.getByTestId('conversation-list')).toBeHidden();
   await page.getByRole('button', { name: 'Volver a los chats' }).click();
   await expect(page.getByTestId('conversation-list')).toBeVisible();
   await expect(page.getByTestId('chat-title')).toHaveCount(0);
+});
+
+test('the "por JFredDev" mark opens the portfolio in a new tab', async ({ page }) => {
+  const mark = page.getByRole('link', { name: /por JFredDev/ });
+  await expect(mark).toHaveAttribute('href', 'https://jfredmc.github.io/portfolio/');
+  await expect(mark).toHaveAttribute('target', '_blank');
+  await expect(mark).toHaveAttribute('rel', /noopener/);
+});
+
+test('a strict CSP is in place and nothing breaks under it', async ({ page }) => {
+  const violations: string[] = [];
+  page.on('console', (message) => {
+    if (/Content Security Policy/i.test(message.text())) violations.push(message.text());
+  });
+  await loginAsDemo(page);
+  const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+  expect(csp).toContain("script-src 'self'");
+  expect(csp).toContain("object-src 'none'");
+  expect(violations).toEqual([]);
 });

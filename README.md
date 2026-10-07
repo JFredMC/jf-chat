@@ -1,4 +1,4 @@
-# JfChat
+# Velo (antes JfChat)
 
 Chat en tiempo real hecho con **Angular 22** (signals, zoneless) y **NestJS + Socket.IO + PostgreSQL**. Tiene mensajes al instante, indicador de «escribiendo…», presencia en línea, confirmaciones de entrega y lectura (✓ ✓✓ ✓✓ azul), adjuntos privados, modo oscuro y diseño responsive, todo en español.
 
@@ -38,7 +38,7 @@ Chat en tiempo real hecho con **Angular 22** (signals, zoneless) y **NestJS + So
 - «Laura está escribiendo…» en el encabezado, en la lista y sobre el cuadro de texto.
 - Presencia: «en línea» o «visto hace 5 minutos», solo visible para amigos y contactos.
 - Historial con scroll infinito (conserva la posición), separadores por día y botón «ir al final» con contador de mensajes nuevos.
-- Contador de no leídos en cada chat y en el título de la pestaña: `(3) JfChat`.
+- Contador de no leídos en cada chat y en el título de la pestaña: `(3) Velo` (oculto en modo discreto).
 - Los enlaces `http(s)` se convierten en links seguros. El contenido nunca se inserta como HTML, así que no hay riesgo de XSS.
 - Adjuntos (imágenes, PDF y texto, hasta 10 MB) con barra de progreso y vista previa; también puedes pegar una captura con Ctrl+V. Los archivos son privados y se abren con URLs firmadas que caducan en 5 minutos.
 

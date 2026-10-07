@@ -4,6 +4,8 @@ import type { Ack, Attachment, AuthSession, Conversation, Friendship, Message, P
 import type { ClientEvents, ServerEvent } from '../core/realtime/realtime-connection';
 import {
   loadDb,
+  newInviteCode,
+  normalizeInvite,
   saveDb,
   seedDb,
   type DbAttachment,
@@ -67,9 +69,9 @@ const isStrong = (password: string) =>
   password.length >= 8 && password.length <= 72 && /[a-z]/.test(password) && /[A-Z]/.test(password) && /\d/.test(password);
 
 /**
- * In-browser implementation of the JfChat API (jf-chat-be) for the public
+ * In-browser implementation of the Velo API (jf-chat-be) for the public
  * demo: same endpoints, payloads, errors and realtime events, with simulated
- * friends that read, type and answer. Data lives in localStorage.
+ * contacts that read, type and answer. Data lives in localStorage.
  */
 @Injectable({ providedIn: 'root' })
 export class DemoServer {
@@ -132,6 +134,8 @@ export class DemoServer {
           const { conversationId, isTyping } = payload as ClientEvents['typing'];
           const conversation = this.activeConversation(userId, conversationId);
           const me = this.findUser(userId)!;
+          // Like the API: hidden typing is dropped server-side.
+          if (me.hide_typing) return { ok: true };
           this.emitTo(this.otherMemberIds(conversation, userId), {
             type: 'typing',
             data: { conversationId, userId, username: me.username, isTyping },
@@ -182,11 +186,12 @@ export class DemoServer {
     if (route === 'PATCH /auth/me') return { status: 200, body: this.updateProfile(me, body) };
     if (route === 'DELETE /auth/me/avatar') return { status: 200, body: this.setAvatar(me, null) };
     if (route === 'POST /auth/me/password') return this.created(200, this.changePassword(me, body));
-    if (route === 'GET /user/search') return { status: 200, body: this.search(me, request.query.get('q') ?? '') };
-    if ((match = /^GET \/user\/(\d+)$/.exec(route))) return { status: 200, body: this.publicUser(this.requireUser(Number(match[1]))) };
+    if (route === 'GET /auth/me/invite') return { status: 200, body: { code: this.formatCode(this.findUser(me)!.invite_code) } };
+    if (route === 'POST /auth/me/invite/rotate') return { status: 200, body: this.rotateInvite(me) };
+    if ((match = /^GET \/user\/(\d+)$/.exec(route))) return { status: 200, body: this.contactProfile(me, Number(match[1])) };
 
     if (route === 'GET /friendship') return { status: 200, body: this.friendships(me) };
-    if (route === 'POST /friendship/request') return { status: 201, body: this.requestFriend(me, Number(body['friendId'])) };
+    if (route === 'POST /friendship/invite') return { status: 201, body: this.redeemInvite(me, String(body['code'] ?? '')) };
     if ((match = /^POST \/friendship\/(\d+)\/accept$/.exec(route))) return { status: 200, body: this.acceptFriend(me, Number(match[1])) };
     if ((match = /^POST \/friendship\/(\d+)\/reject$/.exec(route))) return { status: 200, body: this.rejectFriend(me, Number(match[1])) };
     if ((match = /^DELETE \/friendship\/(\d+)$/.exec(route))) {
@@ -279,22 +284,18 @@ export class DemoServer {
     if (!isStrong(password)) throw new DemoHttpError(400, 'La contraseña debe tener al menos 8 caracteres, con mayúscula, minúscula y número');
     if (this.db.users.some((u) => u.username === username)) throw new DemoHttpError(409, 'Ese nombre de usuario ya está en uso');
     const now = new Date().toISOString();
+    // Username and password only, like the API: no name, no email.
     const user: DbUser = {
       id: this.nextId(),
       username,
-      first_name: this.cleanName(body['first_name']),
-      last_name: this.cleanName(body['last_name']),
       avatar_url: null,
       password,
       created_at: now,
       last_seen: null,
+      invite_code: newInviteCode(),
     };
     this.db.users.push(user);
-    // A welcome: Laura sends a friend request to every new account.
-    const laura = this.db.users.find((u) => u.username === 'laura.mendez');
-    if (laura) {
-      this.db.friendships.push({ id: this.nextId(), requester_id: laura.id, addressee_id: user.id, status: 'pending', created_at: now, updated_at: now });
-    }
+    // New accounts start alone: the demo hints show the codes of Luna and Sol.
     return this.session(user);
   }
 
@@ -322,10 +323,13 @@ export class DemoServer {
       if (text.length > 140) throw new DemoHttpError(400, 'El estado admite hasta 140 caracteres');
       user.status_message = text || null;
     }
-    if ('first_name' in body) user.first_name = this.cleanName(body['first_name']);
-    if ('last_name' in body) user.last_name = this.cleanName(body['last_name']);
+    if ('first_name' in body || 'last_name' in body) throw new DemoHttpError(400, 'Velo no guarda nombres reales');
+    const hidingChanged = 'hide_last_seen' in body && Boolean(body['hide_last_seen']) !== Boolean(user.hide_last_seen);
+    if ('hide_last_seen' in body) user.hide_last_seen = Boolean(body['hide_last_seen']);
+    if ('hide_typing' in body) user.hide_typing = Boolean(body['hide_typing']);
     this.save();
     this.announceProfile(user);
+    if (hidingChanged) this.broadcastPresence(user.id, true);
     return this.publicUser(user);
   }
 
@@ -355,44 +359,41 @@ export class DemoServer {
 
   // --- Users and friends ------------------------------------------------------
 
-  private search(me: number, q: string): User[] {
-    const query = normalize(q.trim());
-    if (query.length < 2) throw new DemoHttpError(400, 'Escribe al menos 2 caracteres');
-    return this.db.users
-      .filter((u) => u.id !== me)
-      .filter((u) => normalize(`${u.username} ${u.first_name ?? ''} ${u.last_name ?? ''}`).includes(query))
-      .slice(0, 20)
-      .map((u) => this.publicUser(u));
+  /** Contacts and conversation partners only: there is no user directory. */
+  private contactProfile(me: number, id: number): User {
+    const user = this.findUser(id);
+    if (!user || (id !== me && !this.contactsOf(me).includes(id))) throw new DemoHttpError(404, 'Usuario no encontrado');
+    return this.publicUser(user);
+  }
+
+  private rotateInvite(me: number): { code: string } {
+    const user = this.findUser(me)!;
+    user.invite_code = newInviteCode();
+    this.save();
+    return { code: this.formatCode(user.invite_code) };
   }
 
   private friendships(me: number): Friendship[] {
     return this.db.friendships.filter((f) => f.requester_id === me || f.addressee_id === me).map((f) => this.friendshipView(f, me));
   }
 
-  private requestFriend(me: number, friendId: number): Friendship {
-    if (friendId === me) throw new DemoHttpError(400, 'No puedes agregarte a ti mismo');
-    const friend = this.requireUser(friendId);
-    const existing = this.relation(me, friendId);
-    if (existing?.status === 'accepted') throw new DemoHttpError(409, 'Ya son amigos');
-    if (existing && existing.requester_id === me) throw new DemoHttpError(409, 'Ya enviaste una solicitud');
-    if (existing) return this.acceptFriend(me, existing.id);
+  /** Same rules as the API: unknown and own codes give the same 404; codes are single use. */
+  private redeemInvite(me: number, raw: string): Friendship {
+    const code = normalizeInvite(raw);
+    if (!/^[A-Z0-9]{8,16}$/.test(code)) throw new DemoHttpError(400, 'El código de invitación no es válido');
+    const owner = this.db.users.find((u) => u.invite_code === code);
+    if (!owner || owner.id === me) throw new DemoHttpError(404, 'Código de invitación inválido o ya usado');
+    const existing = this.relation(me, owner.id);
+    if (existing?.status === 'accepted') throw new DemoHttpError(409, 'Ya es tu contacto');
+    // Simulated people keep their printed code so every visitor can try it.
+    if (!owner.bot) owner.invite_code = newInviteCode();
     const now = new Date().toISOString();
-    const friendship: DbFriendship = { id: this.nextId(), requester_id: me, addressee_id: friendId, status: 'pending', created_at: now, updated_at: now };
+    if (existing) this.db.friendships = this.db.friendships.filter((f) => f.id !== existing.id);
+    const friendship: DbFriendship = { id: this.nextId(), requester_id: owner.id, addressee_id: me, status: 'accepted', created_at: now, updated_at: now };
     this.db.friendships.push(friendship);
     this.save();
-    this.emitTo([friendId], { type: 'friendship_updated', data: { friendshipId: friendship.id, status: 'pending' } });
-    // Simulated people accept after a moment and say hello.
-    if (friend.bot) {
-      this.later(`friend-${friendship.id}`, 2500, () => {
-        const current = this.db.friendships.find((f) => f.id === friendship.id);
-        if (!current || current.status !== 'pending') return;
-        current.status = 'accepted';
-        current.updated_at = new Date().toISOString();
-        this.save();
-        this.emitTo([me], { type: 'friendship_updated', data: { friendshipId: current.id, status: 'accepted' } });
-        this.later(`hello-${friendship.id}`, 1500, () => this.botSays(friend, me, friend.bot!.replies[0]));
-      });
-    }
+    this.emitTo([me, owner.id], { type: 'friendship_updated', data: { friendshipId: friendship.id, status: 'accepted' } });
+    if (owner.bot) this.later(`hello-${friendship.id}`, 1500, () => this.botSays(owner, me, owner.bot!.replies[0]));
     return this.friendshipView(friendship, me);
   }
 
@@ -437,7 +438,7 @@ export class DemoServer {
   private openDirect(me: number, friendId: number): Conversation {
     if (friendId === me) throw new DemoHttpError(403, 'No puedes abrir un chat contigo mismo');
     this.requireUser(friendId);
-    if (this.relation(me, friendId)?.status !== 'accepted') throw new DemoHttpError(403, 'Solo puedes chatear con tus amigos');
+    if (this.relation(me, friendId)?.status !== 'accepted') throw new DemoHttpError(403, 'Solo puedes chatear con tus contactos');
     const conversation = this.directBetween(me, friendId) ?? this.createDirect(me, friendId);
     const mine = conversation.members.find((m) => m.user_id === me)!;
     if (mine.left_at) mine.left_at = null;
@@ -593,9 +594,9 @@ export class DemoServer {
   private botReadsAndAnswers(bot: DbUser, conversation: DbConversation, human: number, text: string, key: string, goOffline: boolean): void {
     this.markRead(bot.id, conversation.id);
     this.later(key, 700, () => {
-      this.emitTo([human], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: true } });
+      this.botTyping(bot, human, conversation.id, true);
       this.later(key, Math.min(1200 + text.length * 25, 3200), () => {
-        this.emitTo([human], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: false } });
+        this.botTyping(bot, human, conversation.id, false);
         this.sendMessage(bot.id, conversation.id, { content: text });
         if (goOffline) this.later(`offline-${bot.id}`, 15000, () => this.setBotOnline(bot, false));
       });
@@ -607,24 +608,29 @@ export class DemoServer {
     if (this.relation(bot.id, to)?.status !== 'accepted') return;
     const conversation = this.directBetween(bot.id, to) ?? this.createDirect(bot.id, to);
     const key = `reply-${conversation.id}-${bot.id}`;
-    this.emitTo([to], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: true } });
+    this.botTyping(bot, to, conversation.id, true);
     this.later(key, 1500, () => {
-      this.emitTo([to], { type: 'typing', data: { conversationId: conversation.id, userId: bot.id, username: bot.username, isTyping: false } });
+      this.botTyping(bot, to, conversation.id, false);
       this.sendMessage(bot.id, conversation.id, { content: text });
     });
   }
 
+  private botTyping(bot: DbUser, to: number, conversationId: number, isTyping: boolean): void {
+    if (bot.hide_typing) return;
+    this.emitTo([to], { type: 'typing', data: { conversationId, userId: bot.id, username: bot.username, isTyping } });
+  }
+
   private replyFor(bot: DbUser, human: number, message: DbMessage): string {
-    const name = this.findUser(human)?.first_name || this.findUser(human)?.username || '';
+    const name = this.findUser(human)?.username ?? '';
     const text = normalize(message.content);
     if (message.attachment_ids.length) {
-      return message.message_type === 'image' ? '¡Qué buena foto! 📸' : 'Recibido, gracias por el archivo 📎';
+      return message.message_type === 'image' ? 'Ya la vi… y ya se borró 🙈' : 'Recibido 💜';
     }
-    if (/^(hola|buenas|hey|holi|que mas|q mas|saludos)\b/.test(text)) return `¡Hola, ${name}! 👋 ¿Qué tal tu día?`;
-    if (/gracias/.test(text)) return '¡Con gusto! 😊';
-    if (/(adios|chao|hasta luego|nos vemos)/.test(text)) return '¡Hasta luego! 👋';
+    if (/^(hola|buenas|hey|holi|que mas|q mas|saludos)\b/.test(text)) return `Hola, ${name} 🌙 ¿Cómo va tu día?`;
+    if (/gracias/.test(text)) return 'Siempre 💜';
+    if (/(adios|chao|hasta luego|nos vemos|buenas noches)/.test(text)) return 'Hasta pronto. Borra el rastro 😉';
     if (text.includes('?')) {
-      const answers = ['Mmm, buena pregunta 🤔 Creo que sí.', 'Yo diría que sí 👍', 'No estoy seguro, ¿tú qué opinas?'];
+      const answers = ['Mmm… creo que sí 😏', 'Sí, cuenta conmigo', 'Dímelo tú primero 🙈'];
       return answers[message.id % answers.length];
     }
     const replies = bot.bot!.replies;
@@ -665,9 +671,10 @@ export class DemoServer {
     queueMicrotask(() => this.bus.next({ userIds, event }));
   }
 
-  private broadcastPresence(userId: number): void {
+  /** Hidden users are never announced, except the "went hidden" update itself. */
+  private broadcastPresence(userId: number, force = false): void {
     const user = this.findUser(userId);
-    if (!user) return;
+    if (!user || (user.hide_last_seen && !force)) return;
     const contacts = this.contactsOf(userId);
     if (contacts.length) this.emitTo(contacts, { type: 'presence', data: this.presenceOf(user) });
   }
@@ -698,21 +705,22 @@ export class DemoServer {
   }
 
   private presenceOf(user: DbUser): PresenceUpdate {
+    if (user.hide_last_seen) return { userId: user.id, online: false, lastSeen: null };
     const online = this.isOnline(user);
     return { userId: user.id, online, lastSeen: online ? null : user.last_seen };
   }
 
   private publicUser(user: DbUser): User {
-    const online = this.isOnline(user);
+    const presence = this.presenceOf(user);
     return {
       id: user.id,
       username: user.username,
-      first_name: user.first_name,
-      last_name: user.last_name,
       avatar_url: user.avatar_url,
       status_message: user.status_message ?? null,
-      status: online ? 'online' : 'offline',
-      last_seen: online ? null : user.last_seen,
+      status: presence.online ? 'online' : 'offline',
+      last_seen: presence.lastSeen,
+      hide_last_seen: !!user.hide_last_seen,
+      hide_typing: !!user.hide_typing,
       created_at: user.created_at,
     };
   }
@@ -826,9 +834,9 @@ export class DemoServer {
     return user;
   }
 
-  private cleanName(value: unknown): string | null {
-    const text = typeof value === 'string' ? value.trim().slice(0, 50) : '';
-    return text || null;
+  /** "K7QM2XRP9D" → "K7QM-2XRP-9D", as the API shows it. */
+  private formatCode(code: string): string {
+    return [code.slice(0, 4), code.slice(4, 8), code.slice(8)].filter(Boolean).join('-');
   }
 
   private nextId(): number {

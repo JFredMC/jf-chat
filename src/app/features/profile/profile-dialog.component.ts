@@ -2,7 +2,8 @@ import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, e
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { errorMessage } from '../../core/api-error';
 import { AuthStore } from '../../core/auth/auth.store';
-import { STATUS_MESSAGE_MAX } from '../../core/models';
+import { PrivacySettings, STATUS_MESSAGE_MAX } from '../../core/models';
+import { BrandService } from '../../core/ui/brand.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AVATAR_ACCEPT, avatarFileError, cropAvatar } from '../../shared/avatar-image';
 import { AvatarComponent } from '../../shared/avatar.component';
@@ -60,7 +61,7 @@ import { sameAs, strongPassword } from '../auth/validators';
 
         <form class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" (submit)="$event.preventDefault(); saveStatus()" aria-labelledby="status-title">
           <h3 id="status-title" class="font-semibold">Estado personal</h3>
-          <p class="text-xs text-gray-500">Lo ven tus amigos y contactos en sus chats.</p>
+          <p class="text-xs text-gray-500">Solo lo ven tus contactos.</p>
           <div class="flex flex-wrap gap-1.5" role="group" aria-label="Agregar un emoji al estado">
             @for (emoji of emojis; track emoji) {
               <button type="button" class="btn-icon h-9 w-9 text-lg" (click)="addEmoji(emoji)" [attr.aria-label]="'Agregar ' + emoji">{{ emoji }}</button>
@@ -82,20 +83,32 @@ import { sameAs, strongPassword } from '../auth/validators';
           </div>
         </form>
 
-        <form class="space-y-4 border-t border-gray-200 pt-6 dark:border-gray-800" [formGroup]="profile" (ngSubmit)="saveProfile()">
-          <h3 class="font-semibold">Nombre</h3>
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label class="label" for="p-first">Nombre</label>
-              <input id="p-first" class="input" formControlName="first_name" maxlength="100" autocomplete="given-name" />
-            </div>
-            <div>
-              <label class="label" for="p-last">Apellido</label>
-              <input id="p-last" class="input" formControlName="last_name" maxlength="100" autocomplete="family-name" />
-            </div>
-          </div>
-          <button type="submit" class="btn-primary" [disabled]="savingProfile() || profile.pristine">Guardar cambios</button>
-        </form>
+        <section class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" aria-labelledby="privacy-title" data-testid="privacy-section">
+          <h3 id="privacy-title" class="font-semibold">Privacidad</h3>
+          <label class="flex cursor-pointer items-start justify-between gap-4">
+            <span>
+              <span class="block text-sm font-medium">Ocultar mi última conexión</span>
+              <span class="block text-xs text-gray-500">Nadie sabe si estás en línea ni cuándo entraste.</span>
+            </span>
+            <input type="checkbox" class="switch" [checked]="!!auth.user()?.hide_last_seen" [disabled]="savingPrivacy()"
+              (change)="savePrivacy({ hide_last_seen: $any($event.target).checked })" data-testid="hide-last-seen" />
+          </label>
+          <label class="flex cursor-pointer items-start justify-between gap-4">
+            <span>
+              <span class="block text-sm font-medium">Ocultar «escribiendo…»</span>
+              <span class="block text-xs text-gray-500">Tu pareja no ve cuándo estás escribiendo.</span>
+            </span>
+            <input type="checkbox" class="switch" [checked]="!!auth.user()?.hide_typing" [disabled]="savingPrivacy()"
+              (change)="savePrivacy({ hide_typing: $any($event.target).checked })" data-testid="hide-typing" />
+          </label>
+          <label class="flex cursor-pointer items-start justify-between gap-4">
+            <span>
+              <span class="block text-sm font-medium">Modo discreto</span>
+              <span class="block text-xs text-gray-500">La pestaña y el ícono instalado se muestran como «Notas». Solo en este dispositivo.</span>
+            </span>
+            <input type="checkbox" class="switch" [checked]="brand.disguised()" (change)="brand.setDisguised($any($event.target).checked)" data-testid="disguise" />
+          </label>
+        </section>
 
         <form class="space-y-4 border-t border-gray-200 pt-6 dark:border-gray-800" [formGroup]="password" (ngSubmit)="changePassword()">
           <h3 class="font-semibold">Cambiar contraseña</h3>
@@ -131,9 +144,9 @@ export class ProfileDialogComponent {
   public readonly open = model(false);
   private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('dialog');
 
-  protected readonly savingProfile = signal(false);
+  protected readonly brand = inject(BrandService);
+  protected readonly savingPrivacy = signal(false);
   protected readonly savingPassword = signal(false);
-  protected readonly profile = this.fb.group({ first_name: [''], last_name: [''] });
   protected readonly password = this.fb.group({
     current: ['', Validators.required],
     next: ['', [Validators.required, strongPassword]],
@@ -160,7 +173,6 @@ export class ProfileDialogComponent {
       if (this.open()) {
         // Only when opening: later profile updates must not reset what is being edited.
         const user = untracked(() => this.auth.user());
-        this.profile.reset({ first_name: user?.first_name ?? '', last_name: user?.last_name ?? '' });
         this.password.reset();
         this.status.set(user?.status_message ?? '');
         this.photoError.set(null);
@@ -259,18 +271,16 @@ export class ProfileDialogComponent {
     });
   }
 
-  protected saveProfile(): void {
-    const { first_name, last_name } = this.profile.getRawValue();
-    this.savingProfile.set(true);
-    this.auth.updateProfile({ first_name: first_name.trim() || null, last_name: last_name.trim() || null }).subscribe({
+  protected savePrivacy(changes: Partial<PrivacySettings>): void {
+    this.savingPrivacy.set(true);
+    this.auth.updateProfile(changes).subscribe({
       next: () => {
-        this.savingProfile.set(false);
-        this.profile.markAsPristine();
-        this.toast.success('Perfil actualizado');
+        this.savingPrivacy.set(false);
+        this.toast.success('Privacidad actualizada');
       },
       error: (error: unknown) => {
-        this.savingProfile.set(false);
-        this.toast.error(errorMessage(error));
+        this.savingPrivacy.set(false);
+        this.toast.error(errorMessage(error, 'No se pudo guardar'));
       },
     });
   }

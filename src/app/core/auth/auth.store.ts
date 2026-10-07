@@ -5,7 +5,9 @@ import { Observable, catchError, finalize, firstValueFrom, map, of, shareReplay,
 import { API_URL } from '../config';
 import type { AuthSession, RegisterRequest, User } from '../models';
 
-const REFRESH_KEY = 'jfchat.refresh';
+const REFRESH_KEY = 'velo.session';
+/** Key used before the Velo rename; migrated once and removed. */
+const LEGACY_REFRESH_KEY = 'jfchat.refresh';
 
 /** There is no refresh token to use. */
 export class NoSessionError extends Error {
@@ -134,7 +136,7 @@ export class AuthStore {
     if (current && current.id === user.id) this.currentUser.set({ ...current, ...user });
   }
 
-  public updateProfile(changes: Partial<Pick<User, 'first_name' | 'last_name' | 'status_message'>>): Observable<User> {
+  public updateProfile(changes: Partial<Pick<User, 'status_message' | 'hide_last_seen' | 'hide_typing'>>): Observable<User> {
     return this.http.patch<User>(`${this.api}/auth/me`, changes).pipe(tap((user) => this.currentUser.set(user)));
   }
 
@@ -167,6 +169,12 @@ export class AuthStore {
 
   private storedRefreshToken(): string | null {
     try {
+      const legacy = localStorage.getItem(LEGACY_REFRESH_KEY);
+      if (legacy) {
+        localStorage.removeItem(LEGACY_REFRESH_KEY);
+        localStorage.removeItem('jfchat.theme');
+        if (!localStorage.getItem(REFRESH_KEY)) localStorage.setItem(REFRESH_KEY, legacy);
+      }
       return localStorage.getItem(REFRESH_KEY);
     } catch {
       return null;

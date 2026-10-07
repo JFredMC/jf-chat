@@ -1,7 +1,7 @@
 import { DOCUMENT, Injectable, computed, effect, inject, signal } from '@angular/core';
 
 export type Theme = 'light' | 'dark';
-const KEY = 'jfchat.theme';
+const KEY = 'velo.theme';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
@@ -13,7 +13,7 @@ export class ThemeService {
     effect(() => {
       const theme = this.theme();
       this.document.documentElement.classList.toggle('dark', theme === 'dark');
-      this.document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#0b1120' : '#ffffff');
+      this.document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#070d18' : '#f5f7fb');
       try {
         localStorage.setItem(KEY, theme);
       } catch {
@@ -33,6 +33,7 @@ export class ThemeService {
     } catch {
       /* private mode */
     }
-    return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    // Dark by default: discreet in a dim room and true to the brand.
+    return 'dark';
   }
 }

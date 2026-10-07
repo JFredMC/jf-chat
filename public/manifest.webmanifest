@@ -1,0 +1,17 @@
+{
+  "name": "Velo",
+  "short_name": "Velo",
+  "description": "Chat privado para dos.",
+  "lang": "es",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#070d18",
+  "theme_color": "#070d18",
+  "icons": [
+    { "src": "icons/velo.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "icons/velo-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/velo-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/velo-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

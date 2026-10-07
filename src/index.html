@@ -2,25 +2,32 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <title>JfChat</title>
+    <title>Velo</title>
     <base href="/" />
+    <!--
+      Content Security Policy (GitHub Pages cannot send headers, so it goes
+      here): no inline scripts, no third parties besides the API and the
+      private storage. scripts/build-pages.mjs drops the localhost entries.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api-chat-brs6.onrender.com https://herwhdweeeqizorafosc.supabase.co http://localhost:3001; media-src 'self' blob: https://herwhdweeeqizorafosc.supabase.co; font-src 'self' data:; connect-src 'self' https://api-chat-brs6.onrender.com wss://api-chat-brs6.onrender.com https://herwhdweeeqizorafosc.supabase.co http://localhost:3001 ws://localhost:3001; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content="JfChat: chat en tiempo real con amigos, presencia, indicador de escritura y confirmaciones de lectura." />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Velo: chat privado para dos. Mensajes que se autodestruyen, sin nombres reales." />
+    <meta name="theme-color" content="#070d18" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="apple-mobile-web-app-title" content="Velo" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
-    <script>
-      // Apply the saved theme before the first paint (no flash).
-      (function () {
-        try {
-          var saved = localStorage.getItem('jfchat.theme');
-          var dark = saved ? saved === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-          if (dark) document.documentElement.classList.add('dark');
-        } catch (e) {}
-      })();
-    </script>
+    <link rel="apple-touch-icon" href="icons/velo-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <script src="boot.js"></script>
   </head>
   <body>
     <app-root></app-root>
-    <noscript>JfChat necesita JavaScript para funcionar.</noscript>
+    <noscript>Velo necesita JavaScript para funcionar.</noscript>
   </body>
 </html>

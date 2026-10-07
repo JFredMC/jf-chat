@@ -20,10 +20,9 @@ export class FriendsStore {
   public readonly incoming = computed(() => this.state().filter((f) => f.status === 'pending' && f.direction === 'incoming'));
   public readonly outgoing = computed(() => this.state().filter((f) => f.status === 'pending' && f.direction === 'outgoing'));
 
-  /** Relationship with a user, for search results. */
-  public relationWith(userId: number): Friendship | undefined {
-    return this.state().find((f) => f.friend.id === userId);
-  }
+  /** My single-use invite code (loaded on demand, rotates when someone redeems it). */
+  public readonly inviteCode = signal<string | null>(null);
+  public readonly inviteBusy = signal(false);
 
   /** A user changed their photo, name or status (realtime `user_updated`). */
   public patchUser(user: User): void {
@@ -35,18 +34,48 @@ export class FriendsStore {
       this.state.set(await firstValueFrom(this.api.list()));
       this.loaded.set(true);
     } catch (error) {
-      this.toast.error(errorMessage(error, 'No se pudieron cargar tus amigos'));
+      this.toast.error(errorMessage(error, 'No se pudieron cargar tus contactos'));
     }
   }
 
-  public async request(userId: number): Promise<void> {
-    await this.run(this.api.request(userId), (f) =>
-      this.toast.success(f.status === 'accepted' ? `Ahora eres amigo de ${displayName(f.friend)}` : 'Solicitud enviada'),
-    );
+  public async loadInvite(): Promise<void> {
+    try {
+      this.inviteCode.set((await firstValueFrom(this.api.myInvite())).code);
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'No se pudo cargar tu código'));
+    }
+  }
+
+  /** Invalidate the current code (e.g. it was shared by mistake). */
+  public async rotateInvite(): Promise<void> {
+    this.inviteBusy.set(true);
+    try {
+      this.inviteCode.set((await firstValueFrom(this.api.rotateInvite())).code);
+      this.toast.success('Código nuevo. El anterior ya no sirve.');
+    } catch (error) {
+      this.toast.error(errorMessage(error, 'No se pudo cambiar el código'));
+    } finally {
+      this.inviteBusy.set(false);
+    }
+  }
+
+  /** Redeem someone's code; resolves with the new contact, or null on failure. */
+  public async redeem(code: string): Promise<Friendship | null> {
+    let added: Friendship | null = null;
+    await this.run(this.api.redeem(code), (f) => {
+      added = f;
+      this.toast.success(`${displayName(f.friend)} ya es tu contacto`);
+    });
+    return added;
+  }
+
+  /** Someone redeemed my code: it is used up, fetch the fresh one if it was shown. */
+  public async refreshInviteIfLoaded(): Promise<void> {
+    if (this.inviteCode()) await this.loadInvite();
   }
 
   public async accept(id: number): Promise<void> {
-    await this.run(this.api.accept(id), (f) => this.toast.success(`Ahora eres amigo de ${displayName(f.friend)}`));
+    await this.run(this.api.accept(id), (f) => this.toast.success(`${displayName(f.friend)} ya es tu contacto`));
   }
 
   public async reject(id: number): Promise<void> {
@@ -70,6 +99,7 @@ export class FriendsStore {
   public reset(): void {
     this.state.set([]);
     this.loaded.set(false);
+    this.inviteCode.set(null);
   }
 
   private async run(request: ReturnType<FriendsApi['accept']>, onDone: (f: Friendship) => void): Promise<void> {
