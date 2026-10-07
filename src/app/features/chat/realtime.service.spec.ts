@@ -40,11 +40,13 @@ describe('RealtimeService', () => {
     refreshConversation: vi.fn(),
     resync: vi.fn(async () => undefined),
     useSender: vi.fn((s: MessageSender | null) => (sender = s)),
+    patchUser: vi.fn(),
   };
   const presence = { apply: vi.fn(), setTyping: vi.fn(), clearTyping: vi.fn() };
   const incoming = signal<unknown[]>([]);
   const friendsList = signal<unknown[]>([]);
-  const friends = { load: vi.fn(async () => incoming.set([{}])), incoming, friends: friendsList };
+  const friends = { load: vi.fn(async () => incoming.set([{}])), incoming, friends: friendsList, patchUser: vi.fn() };
+  const patchSelf = vi.fn();
   const api = { send: vi.fn() };
   const toast = { info: vi.fn(), success: vi.fn(), error: vi.fn() };
 
@@ -60,7 +62,7 @@ describe('RealtimeService', () => {
         { provide: FriendsStore, useValue: friends },
         { provide: ChatApi, useValue: api },
         { provide: ToastService, useValue: toast },
-        { provide: AuthStore, useValue: { user: signal<User | null>(me) } },
+        { provide: AuthStore, useValue: { user: signal<User | null>(me), patchSelf } },
       ],
     });
     service = TestBed.inject(RealtimeService);
@@ -98,6 +100,17 @@ describe('RealtimeService', () => {
     expect(chat.applyRead).toHaveBeenCalled();
     expect(chat.applyDelivered).toHaveBeenCalled();
     expect(presence.apply).toHaveBeenCalledWith([{ userId: 2, online: true, lastSeen: null }]);
+  });
+
+  it('applies profile updates to chats, friends and my own header', () => {
+    const beto = { ...user(2, 'beto'), avatar_url: '/avatars/2/x.webp', status_message: '🎧 Ocupado' };
+    connection.subject.next({ type: 'user_updated', data: beto });
+    expect(chat.patchUser).toHaveBeenCalledWith(beto);
+    expect(friends.patchUser).toHaveBeenCalledWith(beto);
+    expect(patchSelf).not.toHaveBeenCalled();
+    const self = { ...me, status_message: 'Hola' };
+    connection.subject.next({ type: 'user_updated', data: self });
+    expect(patchSelf).toHaveBeenCalledWith(self);
   });
 
   it('catches up after a reconnection, not on the first connection', () => {

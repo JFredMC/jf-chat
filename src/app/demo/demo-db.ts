@@ -9,6 +9,8 @@ export interface DbUser {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  /** Personal status, up to 140 characters. */
+  status_message?: string | null;
   password: string;
   created_at: string;
   last_seen: string | null;
@@ -78,7 +80,7 @@ export interface DemoDb {
   refreshTokens: Record<string, number>;
 }
 
-export const DB_VERSION = 1;
+export const DB_VERSION = 2;
 export const STORAGE_KEY = 'jfchat.demo.db';
 export const DEMO_USERNAME = 'demo';
 export const DEMO_PASSWORD = 'Demo1234';
@@ -126,6 +128,9 @@ export function seedDb(now = Date.now()): DemoDb {
   const andres = user('andres.p', 'Andrés', 'Pérez', { online: true, replies: ['¡Gracias por aceptar! 👋 ¿Cómo va todo?'] }, 10);
   const valentina = user('valentina.c', 'Valentina', 'Castro', { online: true, replies: ['¡Hola! Gracias por agregarme 😊', '¡Claro que sí!'] }, 30);
   const mateo = user('mateo.g', 'Mateo', 'Gómez', { online: false, replies: ['¡Hola! 👋'] }, 60 * 26);
+  laura.status_message = '☕ Con café y buena música';
+  carlos.status_message = '💻 Programando, respondo luego';
+  sofia.status_message = '✈️ De viaje hasta el lunes';
 
   const friendship = (a: DbUser, b: DbUser, status: DbFriendship['status'], minutes: number): DbFriendship => ({
     id: id(),

@@ -131,6 +131,30 @@ describe('DemoServer (in-browser API)', () => {
     expect(error(() => call('POST', '/friendship/request', { friendId: valentina.id }, accessToken))).toMatchObject({ status: 409 });
   });
 
+  it('sets a status and avatar, validates them and tells the user and contacts', async () => {
+    const { accessToken, user } = login();
+    const events: ServerEvent[] = [];
+    const subscription = server.eventsFor(user.id).subscribe((event) => events.push(event));
+    const updated = call('PATCH', '/auth/me', { status_message: '  🎧 Concentrado ' }, accessToken).body as { status_message: string };
+    expect(updated.status_message).toBe('🎧 Concentrado');
+    expect(error(() => call('PATCH', '/auth/me', { status_message: 'x'.repeat(141) }, accessToken))).toMatchObject({ status: 400 });
+
+    const file = { name: 'a', type: 'image/webp', size: 10, url: 'data:image/webp;base64,AAAA', persistable: true };
+    expect(server.uploadAvatar(accessToken, file).avatar_url).toBe(file.url);
+    expect(() => server.uploadAvatar(accessToken, { ...file, type: 'image/gif' })).toThrow(DemoHttpError);
+    expect(() => server.uploadAvatar(null, file)).toThrow(DemoHttpError);
+    const friends = call('GET', '/friendship', null, accessToken).body as Friendship[];
+    expect(friends.some((f) => f.friend.status_message)).toBe(true);
+
+    const removed = call('DELETE', '/auth/me/avatar', null, accessToken).body as { avatar_url: string | null };
+    expect(removed.avatar_url).toBeNull();
+    await vi.runAllTimersAsync();
+    subscription.unsubscribe();
+    expect(events.filter((e) => e.type === 'user_updated')).toHaveLength(3);
+    const cleared = call('PATCH', '/auth/me', { status_message: '' }, accessToken).body as { status_message: string | null };
+    expect(cleared.status_message).toBeNull();
+  });
+
   it('only lets members open attachments and owners discard pending ones', () => {
     const { accessToken, user } = login();
     const [conversation] = call('GET', '/conversation', null, accessToken).body as Conversation[];

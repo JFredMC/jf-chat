@@ -123,6 +123,17 @@ export class ChatStore {
     }
   }
 
+  /** A user changed their photo, name or status (realtime `user_updated`). */
+  public patchUser(user: User): void {
+    this.conversationsState.update((list) =>
+      list.map((c) =>
+        c.members.some((m) => m.user_id === user.id)
+          ? { ...c, members: c.members.map((m) => (m.user_id === user.id ? { ...m, user: { ...m.user, ...user } } : m)) }
+          : c,
+      ),
+    );
+  }
+
   public otherMember(conversation: Conversation | null): ConversationMember | null {
     if (!conversation) return null;
     const me = this.me()?.id;

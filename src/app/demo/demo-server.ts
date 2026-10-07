@@ -180,6 +180,7 @@ export class DemoServer {
 
     if (route === 'GET /auth/me') return { status: 200, body: this.publicUser(this.findUser(me)!) };
     if (route === 'PATCH /auth/me') return { status: 200, body: this.updateProfile(me, body) };
+    if (route === 'DELETE /auth/me/avatar') return { status: 200, body: this.setAvatar(me, null) };
     if (route === 'POST /auth/me/password') return this.created(200, this.changePassword(me, body));
     if (route === 'GET /user/search') return { status: 200, body: this.search(me, request.query.get('q') ?? '') };
     if ((match = /^GET \/user\/(\d+)$/.exec(route))) return { status: 200, body: this.publicUser(this.requireUser(Number(match[1]))) };
@@ -243,6 +244,17 @@ export class DemoServer {
     return this.attachmentView(attachment);
   }
 
+  /** `POST /auth/me/avatar` (multipart in the real API). `url` is a data: URL. */
+  public uploadAvatar(token: string | null, file: DemoFile): User {
+    const me = this.userIdFromToken(token);
+    if (me === null) throw new DemoHttpError(401, 'No autorizado');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new DemoHttpError(400, 'Usa una imagen JPG, PNG o WebP');
+    if (file.size <= 0) throw new DemoHttpError(400, 'La imagen está vacía');
+    if (file.size > 3 * 1024 * 1024) throw new DemoHttpError(400, 'La imagen supera el máximo de 3 MB');
+    if (!file.url.startsWith('data:image/')) throw new DemoHttpError(400, 'No se pudo leer la imagen');
+    return this.setAvatar(me, file.url);
+  }
+
   /** Back to the initial data (button in the demo banner). */
   public reset(): void {
     for (const timers of this.replyTimers.values()) timers.forEach(clearTimeout);
@@ -303,10 +315,31 @@ export class DemoServer {
 
   private updateProfile(userId: number, body: Record<string, unknown>): User {
     const user = this.findUser(userId)!;
+    if ('status_message' in body) {
+      const value = body['status_message'];
+      if (value !== null && typeof value !== 'string') throw new DemoHttpError(400, 'El estado debe ser texto');
+      const text = (value ?? '').trim();
+      if (text.length > 140) throw new DemoHttpError(400, 'El estado admite hasta 140 caracteres');
+      user.status_message = text || null;
+    }
     if ('first_name' in body) user.first_name = this.cleanName(body['first_name']);
     if ('last_name' in body) user.last_name = this.cleanName(body['last_name']);
     this.save();
+    this.announceProfile(user);
     return this.publicUser(user);
+  }
+
+  private setAvatar(userId: number, url: string | null): User {
+    const user = this.findUser(userId)!;
+    user.avatar_url = url;
+    this.save();
+    this.announceProfile(user);
+    return this.publicUser(user);
+  }
+
+  /** Like the API's `user_updated`: to the user and their friends and contacts. */
+  private announceProfile(user: DbUser): void {
+    this.emitTo([user.id, ...this.contactsOf(user.id)], { type: 'user_updated', data: this.publicUser(user) });
   }
 
   private changePassword(userId: number, body: Record<string, unknown>): AuthSession {
@@ -677,6 +710,7 @@ export class DemoServer {
       first_name: user.first_name,
       last_name: user.last_name,
       avatar_url: user.avatar_url,
+      status_message: user.status_message ?? null,
       status: online ? 'online' : 'offline',
       last_seen: online ? null : user.last_seen,
       created_at: user.created_at,

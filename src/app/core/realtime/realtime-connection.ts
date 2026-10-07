@@ -1,6 +1,6 @@
 import type { Signal } from '@angular/core';
 import type { Observable } from 'rxjs';
-import type { Ack, DeliveredEvent, Message, PresenceUpdate, ReadEvent, TypingEvent } from '../models';
+import type { Ack, DeliveredEvent, Message, PresenceUpdate, ReadEvent, TypingEvent, User } from '../models';
 
 /**
  * - `idle`: not started (signed out).
@@ -20,6 +20,8 @@ export interface ServerEvents {
   presence_snapshot: PresenceUpdate[];
   presence: PresenceUpdate;
   friendship_updated: { friendshipId: number; status: string };
+  /** Someone (or you) changed their photo, name or personal status. */
+  user_updated: User;
   session_expired: { message: string };
 }
 

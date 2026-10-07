@@ -22,6 +22,11 @@ import { PresenceStore } from './presence.store';
         <p class="truncate text-xs" [class]="typingLabel() ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'" data-testid="chat-status" aria-live="polite">
           {{ typingLabel() || statusLabel() }}
         </p>
+        @if (other()?.user?.status_message; as statusMessage) {
+          <p class="truncate text-xs text-gray-500 italic dark:text-gray-400" data-testid="chat-status-message" [attr.title]="statusMessage">
+            <span class="sr-only">Estado: </span>{{ statusMessage }}
+          </p>
+        }
       </div>
       <button type="button" class="btn-icon" (click)="confirmLeave()" aria-label="Eliminar chat" title="Eliminar chat">
         <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" stroke-linecap="round" stroke-linejoin="round" /></svg>
