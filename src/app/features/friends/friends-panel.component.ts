@@ -99,6 +99,9 @@ import { FriendsStore } from './friends.store';
               <span class="min-w-0 flex-1">
                 <span class="block truncate text-sm font-medium">{{ name(friendship.friend) }}</span>
                 <span class="block truncate text-xs text-gray-500">{{ presence.label(friendship.friend.id, friendship.friend.last_seen) }}</span>
+                @if (friendship.friend.status_message; as statusMessage) {
+                  <span class="block truncate text-xs text-gray-600 italic dark:text-gray-300" data-testid="friend-status-message"><span class="sr-only">Estado: </span>{{ statusMessage }}</span>
+                }
               </span>
               <button type="button" class="btn-secondary px-3 py-1.5 text-xs" (click)="chat.emit(friendship.friend.id)" [attr.aria-label]="'Chatear con ' + name(friendship.friend)">Chatear</button>
               <button type="button" class="btn-icon h-8 w-8 text-sm" (click)="removeFriend(friendship.id, friendship.friend)" [attr.aria-label]="'Eliminar a ' + name(friendship.friend) + ' de tus amigos'">✕</button>

@@ -16,6 +16,7 @@ import { AttachmentTrayComponent } from './attachment-tray.component';
 import { ComposerComponent } from './composer.component';
 import { ConnectionBannerComponent } from './connection-banner.component';
 import { ConversationListComponent } from './conversation-list.component';
+import { NewChatDialogComponent } from './new-chat-dialog.component';
 import { PresenceStore } from './presence.store';
 import { RealtimeService } from './realtime.service';
 
@@ -28,6 +29,7 @@ type Tab = 'chats' | 'friends';
     ConversationListComponent,
     FriendsPanelComponent,
     ChatViewComponent,
+    NewChatDialogComponent,
     ComposerComponent,
     AttachmentTrayComponent,
     ConnectionBannerComponent,
@@ -44,11 +46,11 @@ type Tab = 'chats' | 'friends';
         aria-label="Chats y amigos"
       >
         <header class="flex items-center gap-3 px-4 pt-4 pb-3">
-          <button type="button" class="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left" (click)="profileOpen.set(true)" aria-label="Abrir tu perfil">
+          <button type="button" class="flex min-w-0 flex-1 items-center gap-3 rounded-xl text-left" (click)="profileOpen.set(true)" aria-label="Mi perfil: cambiar foto y estado" title="Mi perfil" data-testid="open-profile">
             <app-avatar [user]="auth.user()" [size]="40" />
             <span class="min-w-0">
               <span class="block truncate font-semibold text-gray-900 dark:text-white" data-testid="me-name">{{ myName() }}</span>
-              <span class="block truncate text-xs text-gray-500">&#64;{{ auth.user()?.username }}</span>
+              <span class="block truncate text-xs text-gray-500" data-testid="me-status">{{ auth.user()?.status_message || '@' + auth.user()?.username }}</span>
             </span>
           </button>
           <button type="button" class="btn-icon" (click)="theme.toggle()" [attr.aria-label]="theme.isDark() ? 'Usar tema claro' : 'Usar tema oscuro'">
@@ -88,11 +90,23 @@ type Tab = 'chats' | 'friends';
         </div>
 
         @if (tab() === 'chats') {
-          <div id="panel-chats" role="tabpanel" aria-labelledby="tab-chats" class="flex min-h-0 flex-1 flex-col">
+          <div id="panel-chats" role="tabpanel" aria-labelledby="tab-chats" class="relative flex min-h-0 flex-1 flex-col">
             <div class="px-4 pb-1">
               <input type="search" class="input h-10" placeholder="Buscar chat" aria-label="Buscar chat" [value]="filter()" (input)="filter.set($any($event.target).value)" />
             </div>
-            <app-conversation-list class="min-h-0 flex-1 overflow-y-auto" [filter]="filter()" (open)="open($event)" (findFriends)="tab.set('friends')" />
+            <app-conversation-list class="min-h-0 flex-1 overflow-y-auto pb-24" [filter]="filter()" (open)="open($event)" (findFriends)="newChatOpen.set(true)" />
+            <!-- Inside the list panel: never over a bottom nav or the open chat; the list leaves room for it. -->
+            <button
+              type="button"
+              class="absolute right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-10 flex h-14 w-14 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 transition hover:bg-indigo-700 focus-visible:ring-4 focus-visible:ring-indigo-300 focus-visible:outline-none active:scale-95"
+              (click)="newChatOpen.set(true)"
+              aria-label="Nuevo chat"
+              title="Nuevo chat"
+              aria-haspopup="dialog"
+              data-testid="new-chat-fab"
+            >
+              <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke-linecap="round" /></svg>
+            </button>
           </div>
         } @else {
           <div id="panel-friends" role="tabpanel" aria-labelledby="tab-friends" class="min-h-0 flex-1 overflow-y-auto">
@@ -130,6 +144,7 @@ type Tab = 'chats' | 'friends';
     </div>
     <app-connection-banner />
     <app-profile-dialog [(open)]="profileOpen" />
+    <app-new-chat-dialog [(open)]="newChatOpen" (chat)="chatWith($event)" />
   `,
 })
 export class ChatShellComponent implements OnInit {
@@ -147,6 +162,7 @@ export class ChatShellComponent implements OnInit {
   protected readonly tab = signal<Tab>('chats');
   protected readonly filter = signal('');
   protected readonly profileOpen = signal(false);
+  protected readonly newChatOpen = signal(false);
   protected readonly myName = computed(() => displayName(this.auth.user()));
 
   public constructor() {

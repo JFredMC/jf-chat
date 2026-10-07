@@ -1,5 +1,6 @@
-import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
-import { displayName, type User } from '../core/models';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { API_URL } from '../core/config';
+import { avatarSrc, displayName, type User } from '../core/models';
 
 const COLORS = [
   'from-rose-500 to-pink-500',
@@ -12,7 +13,7 @@ const COLORS = [
   'from-lime-500 to-green-600',
 ];
 
-/** Initials avatar with a stable color per user and an optional presence dot. */
+/** Profile photo, or initials with a stable color per user, and an optional presence dot. */
 @Component({
   selector: 'app-avatar',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -25,7 +26,20 @@ const COLORS = [
       [style.font-size.px]="size() * 0.38"
       aria-hidden="true"
     >
-      {{ initials() }}
+      @if (src(); as url) {
+        <img
+          [src]="url"
+          alt=""
+          class="h-full w-full rounded-full bg-gray-200 object-cover dark:bg-gray-800"
+          loading="lazy"
+          decoding="async"
+          referrerpolicy="no-referrer"
+          (error)="failed.set(url)"
+          data-testid="avatar-img"
+        />
+      } @else {
+        {{ initials() }}
+      }
       @if (online() !== null) {
         <span
           class="absolute right-0 bottom-0 block rounded-full ring-2 ring-white dark:ring-gray-900"
@@ -39,10 +53,18 @@ const COLORS = [
   `,
 })
 export class AvatarComponent {
-  public readonly user = input.required<Pick<User, 'id' | 'username' | 'first_name' | 'last_name'> | null | undefined>();
+  private readonly api = inject(API_URL);
+  public readonly user = input.required<Pick<User, 'id' | 'username' | 'first_name' | 'last_name'> & Partial<Pick<User, 'avatar_url'>> | null | undefined>();
   public readonly size = input(40);
   /** null hides the dot. */
   public readonly online = input<boolean | null>(null);
+  /** An image that failed to load falls back to the initials. */
+  protected readonly failed = signal<string | null>(null);
+
+  protected readonly src = computed(() => {
+    const url = avatarSrc(this.user()?.avatar_url, this.api);
+    return url && url !== this.failed() ? url : null;
+  });
 
   protected readonly initials = computed(() => {
     const user = this.user();

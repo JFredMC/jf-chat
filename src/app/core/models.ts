@@ -8,6 +8,8 @@ export interface User {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  /** Personal status ("estado personal"), up to 140 characters. */
+  status_message?: string | null;
   status?: UserStatus;
   last_seen?: string | null;
   created_at?: string;
@@ -125,4 +127,16 @@ export const displayName = (user: Pick<User, 'username' | 'first_name' | 'last_n
   if (!user) return 'Usuario';
   const full = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
   return full || user.username;
+};
+
+export const STATUS_MESSAGE_MAX = 140;
+
+/**
+ * Absolute URL of an avatar. The API issues paths like `/avatars/1/x.png`
+ * (resolved against the API); data:, blob: and https: URLs pass through.
+ */
+export const avatarSrc = (url: string | null | undefined, apiUrl: string): string | null => {
+  if (!url) return null;
+  if (url.startsWith('/')) return `${apiUrl}${url}`;
+  return /^(https:|data:image\/|blob:)/.test(url) ? url : null;
 };

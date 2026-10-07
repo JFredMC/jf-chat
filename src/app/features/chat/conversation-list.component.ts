@@ -55,6 +55,11 @@ import { PresenceStore } from './presence.store';
                     <time class="shrink-0 text-xs" [class]="unread ? 'font-semibold text-indigo-600 dark:text-indigo-400' : 'text-gray-500'">{{ time(last.created_at) }}</time>
                   }
                 </span>
+                @if (other?.user?.status_message; as statusMessage) {
+                  <span class="block truncate text-xs text-gray-500 italic dark:text-gray-400" data-testid="conversation-status-message">
+                    <span class="sr-only">Estado: </span>{{ statusMessage }}
+                  </span>
+                }
                 <span class="mt-0.5 flex items-center gap-1.5">
                   @if (presence.typingIn(conversation.id).length) {
                     <span class="truncate text-sm font-medium text-indigo-600 dark:text-indigo-400">escribiendo…</span>

@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { errorMessage } from '../../core/api-error';
-import { displayName, type Friendship } from '../../core/models';
+import { displayName, type Friendship, type User } from '../../core/models';
 import { ToastService } from '../../core/ui/toast.service';
 import { FriendsApi } from './friends.api';
 
@@ -23,6 +23,11 @@ export class FriendsStore {
   /** Relationship with a user, for search results. */
   public relationWith(userId: number): Friendship | undefined {
     return this.state().find((f) => f.friend.id === userId);
+  }
+
+  /** A user changed their photo, name or status (realtime `user_updated`). */
+  public patchUser(user: User): void {
+    this.state.update((list) => list.map((f) => (f.friend.id === user.id ? { ...f, friend: { ...f.friend, ...user } } : f)));
   }
 
   public async load(): Promise<void> {

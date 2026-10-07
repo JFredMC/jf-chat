@@ -107,6 +107,67 @@ test('searching and adding someone: they accept on their own', async ({ page }) 
   await expect(page.getByTestId('friends-list')).toContainText('Valentina Castro');
 });
 
+test('Mi perfil: photo with preview, personal status and back to initials', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
+  await expect(dialog).toBeVisible();
+
+  await dialog.getByTestId('avatar-input').setInputFiles({ name: 'doc.gif', mimeType: 'image/gif', buffer: Buffer.from('GIF89a') });
+  await expect(dialog.getByTestId('avatar-error')).toContainText('JPG, PNG o WebP');
+
+  await dialog.getByTestId('avatar-input').setInputFiles({ name: 'yo.png', mimeType: 'image/png', buffer: PNG_1X1 });
+  await expect(dialog.getByTestId('avatar-preview')).toBeVisible();
+  await dialog.getByTestId('avatar-save').click();
+  await expect(page.getByText('Foto de perfil actualizada')).toBeVisible();
+  await expect(dialog.getByTestId('avatar-remove')).toBeVisible();
+
+  await dialog.getByRole('button', { name: 'Agregar 🎧' }).click();
+  await dialog.getByTestId('status-input').fill('🎧 Probando la demo');
+  await dialog.getByTestId('status-save').click();
+  await expect(page.getByText('Estado actualizado')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+
+  await expect(page.getByTestId('me-status')).toHaveText('🎧 Probando la demo');
+  await expect(page.locator('aside header').getByTestId('avatar-img')).toBeVisible();
+  // Friends show their status in the list.
+  await expect(page.getByTestId('conversation-item').filter({ hasText: 'Laura Méndez' }).getByTestId('conversation-status-message')).toContainText('Con café');
+
+  await page.getByTestId('open-profile').click();
+  await dialog.getByTestId('avatar-remove').click();
+  await expect(page.getByText('Foto eliminada')).toBeVisible();
+  await dialog.getByTestId('status-clear').click();
+  await expect(page.getByText('Estado borrado')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+  await expect(page.locator('aside header').getByTestId('avatar-img')).toHaveCount(0);
+  await expect(page.getByTestId('me-status')).toHaveText('@demo');
+});
+
+test('the "Nuevo chat" button opens a chat with a friend or sends a request', async ({ page }) => {
+  await loginAsDemo(page);
+  const fab = page.getByRole('button', { name: 'Nuevo chat' });
+  await expect(fab).toBeVisible();
+  // Bottom right of the list, inside the viewport (nothing else down there to cover).
+  const box = (await fab.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+
+  await fab.click();
+  const dialog = page.getByRole('dialog', { name: 'Nuevo chat' });
+  await expect(dialog.getByTestId('new-chat-friends')).toContainText('Sofía Ramírez');
+  await dialog.getByTestId('new-chat-search').fill('valen');
+  await expect(dialog.getByTestId('new-chat-results')).toContainText('Valentina Castro');
+  await dialog.getByRole('button', { name: 'Enviar solicitud de amistad a Valentina Castro' }).click();
+  await expect(dialog.getByText('Solicitud enviada')).toBeVisible();
+
+  await dialog.getByTestId('new-chat-search').fill('sofi');
+  await dialog.getByRole('button', { name: 'Chatear con Sofía Ramírez' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.getByTestId('chat-title')).toHaveText('Sofía Ramírez');
+  await expect(page.getByTestId('chat-status-message')).toContainText('De viaje');
+});
+
 test('sending an image attachment', async ({ page }) => {
   await loginAsDemo(page);
   await openChat(page, 'Carlos Rincón');

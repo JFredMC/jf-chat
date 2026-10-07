@@ -117,7 +117,24 @@ export class AuthStore {
     void this.router.navigate(['/auth/login'], { queryParams: { sesion: 'expirada' } });
   }
 
-  public updateProfile(changes: Pick<User, 'first_name' | 'last_name'>): Observable<User> {
+  /** Own photo. The image is already cropped and resized on the client. */
+  public uploadAvatar(image: Blob, fileName: string): Observable<User> {
+    const form = new FormData();
+    form.append('file', image, fileName);
+    return this.http.post<User>(`${this.api}/auth/me/avatar`, form).pipe(tap((user) => this.currentUser.set(user)));
+  }
+
+  public removeAvatar(): Observable<User> {
+    return this.http.delete<User>(`${this.api}/auth/me/avatar`).pipe(tap((user) => this.currentUser.set(user)));
+  }
+
+  /** Realtime echo of our own profile (another tab or device changed it). */
+  public patchSelf(user: User): void {
+    const current = this.currentUser();
+    if (current && current.id === user.id) this.currentUser.set({ ...current, ...user });
+  }
+
+  public updateProfile(changes: Partial<Pick<User, 'first_name' | 'last_name' | 'status_message'>>): Observable<User> {
     return this.http.patch<User>(`${this.api}/auth/me`, changes).pipe(tap((user) => this.currentUser.set(user)));
   }
 

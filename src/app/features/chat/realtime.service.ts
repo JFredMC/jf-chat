@@ -104,6 +104,11 @@ export class RealtimeService {
       case 'friendship_updated':
         void this.onFriendshipUpdated(event.data.status);
         break;
+      case 'user_updated':
+        this.chat.patchUser(event.data);
+        this.friends.patchUser(event.data);
+        if (event.data.id === me) this.auth.patchSelf(event.data);
+        break;
       case 'session_expired':
         break;
     }
