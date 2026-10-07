@@ -12,9 +12,9 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { Conversation } from '../../core/models';
+import { displayName, type Conversation } from '../../core/models';
 import { dayLabel, isSameDay } from '../../shared/time';
-import { ChatStore, type Thread, type UiMessage } from './chat.store';
+import { ChatStore, DEFAULT_RETENTION_SECONDS, type Thread, type UiMessage } from './chat.store';
 import { MessageBubbleComponent } from './message-bubble.component';
 
 interface Row {
@@ -22,6 +22,7 @@ interface Row {
   day?: string;
   message: UiMessage;
   first: boolean;
+  last: boolean;
 }
 
 const GROUP_GAP_MS = 5 * 60_000;
@@ -53,15 +54,17 @@ const NEAR_BOTTOM_PX = 120;
         <p class="py-3 text-center text-xs text-gray-500">Cargando mensajes anteriores…</p>
       }
       @if (!thread().hasMore && thread().loaded && thread().messages.length) {
-        <p class="py-4 text-center text-xs text-gray-400">🔒 Este es el inicio de la conversación</p>
+        <p class="mx-auto my-4 max-w-xs rounded-xl bg-amber-50/80 px-3 py-2 text-center text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200" data-testid="retention-note">
+          🔒 Solo ustedes dos. Cada mensaje se autodestruye 24 horas después de enviarse.
+        </p>
       }
       @if (thread().error) {
         <p class="py-3 text-center text-sm text-red-600 dark:text-red-400" role="alert">{{ thread().error }}</p>
       }
       @if (thread().loaded && !thread().messages.length) {
         <div class="flex h-full flex-col items-center justify-center gap-2 py-16 text-center text-gray-500 dark:text-gray-400">
-          <span class="text-4xl" aria-hidden="true">👋</span>
-          <p class="text-sm">Todavía no hay mensajes. ¡Saluda!</p>
+          <span class="text-4xl" aria-hidden="true">🌙</span>
+          <p class="text-sm">No queda nada aquí. Lo que escriban se borrará solo en 24 horas.</p>
         </div>
       }
       @if (!thread().loaded && thread().loading) {
@@ -83,10 +86,17 @@ const NEAR_BOTTOM_PX = 120;
           [message]="row.message"
           [mine]="row.message.sender_id === meId()"
           [first]="row.first"
+          [last]="row.last"
           [showSender]="conversation().type !== 'direct'"
           [state]="row.message.sender_id === meId() ? store.deliveryState(conversation(), row.message) : null"
+          [partnerName]="partnerName()"
+          [myId]="meId()"
+          [now]="store.now()"
+          [retentionSeconds]="conversation().retention_seconds ?? defaultRetention"
           (retry)="store.retry(row.message)"
           (discard)="store.discard(row.message)"
+          (reply)="reply.emit(row.message)"
+          (jump)="jumpTo($event)"
         />
       }
     </div>
@@ -110,12 +120,15 @@ export class MessageListComponent implements OnDestroy {
   public readonly conversation = input.required<Conversation>();
   public readonly thread = input.required<Thread>();
   public readonly loadOlder = output();
+  public readonly reply = output<UiMessage>();
 
   private readonly scroller = viewChild.required<ElementRef<HTMLElement>>('scroller');
   private readonly top = viewChild.required<ElementRef<HTMLElement>>('top');
   protected readonly atBottom = signal(true);
   protected readonly unseen = signal(0);
   protected readonly meId = computed(() => this.store.me()?.id ?? -1);
+  protected readonly defaultRetention = DEFAULT_RETENTION_SECONDS;
+  protected readonly partnerName = computed(() => displayName(this.store.otherMember(this.conversation())?.user));
 
   private observer?: IntersectionObserver;
   private lastConversationId: number | null = null;
@@ -125,15 +138,22 @@ export class MessageListComponent implements OnDestroy {
 
   protected readonly rows = computed<Row[]>(() => {
     const messages = this.thread().messages;
+    const groupedWith = (a: UiMessage | undefined, b: UiMessage | undefined) =>
+      !!a &&
+      !!b &&
+      isSameDay(a.created_at, b.created_at) &&
+      a.sender_id === b.sender_id &&
+      Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < GROUP_GAP_MS;
     return messages.map((message, index) => {
       const previous = messages[index - 1];
       const newDay = !previous || !isSameDay(previous.created_at, message.created_at);
-      const grouped =
-        !!previous &&
-        !newDay &&
-        previous.sender_id === message.sender_id &&
-        new Date(message.created_at).getTime() - new Date(previous.created_at).getTime() < GROUP_GAP_MS;
-      return { key: message.key, day: newDay ? dayLabel(message.created_at) : undefined, message, first: !grouped };
+      return {
+        key: message.key,
+        day: newDay ? dayLabel(message.created_at) : undefined,
+        message,
+        first: !groupedWith(previous, message),
+        last: !groupedWith(message, messages[index + 1]),
+      };
     });
   });
 
@@ -161,6 +181,15 @@ export class MessageListComponent implements OnDestroy {
       this.unseen.set(0);
       this.store.markActiveRead();
     }
+  }
+
+  /** Scrolls to a quoted message and flashes it. */
+  protected jumpTo(id: number): void {
+    const target = this.scroller().nativeElement.querySelector<HTMLElement>(`#msg-${id}`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('flash');
+    setTimeout(() => target.classList.remove('flash'), 1200);
   }
 
   public scrollToBottom(smooth = false): void {

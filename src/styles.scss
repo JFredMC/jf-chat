@@ -105,3 +105,42 @@
     transform: translateX(1.25rem);
   }
 }
+
+/* Bubble tails: a small curved notch on the last bubble of each group. */
+@layer components {
+  .bubble-tail-mine::after,
+  .bubble-tail-theirs::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    width: 10px;
+    height: 14px;
+    pointer-events: none;
+  }
+  .bubble-tail-mine::after {
+    right: -6px;
+    background: var(--color-indigo-500);
+    clip-path: path("M0 0 C0 8 4 12 10 14 L0 14 Z");
+  }
+  .bubble-tail-theirs::after {
+    left: -6px;
+    background: var(--color-white);
+    clip-path: path("M10 0 C10 8 6 12 0 14 L10 14 Z");
+  }
+  .dark .bubble-tail-theirs::after {
+    background: var(--color-gray-800);
+  }
+}
+
+@keyframes flash-quote {
+  from {
+    background: color-mix(in oklab, var(--color-cyan-400) 25%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+.flash {
+  animation: flash-quote 1.2s ease-out;
+  border-radius: 1rem;
+}

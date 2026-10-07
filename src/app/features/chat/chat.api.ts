@@ -2,13 +2,15 @@ import { HttpClient, type HttpEvent } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { API_URL } from '../../core/config';
-import type { Attachment, Conversation, Message, MessagePage } from '../../core/models';
+import type { Attachment, Conversation, Message, MessagePage, User } from '../../core/models';
 
 export interface SendMessageBody {
   content?: string;
   client_id?: string;
   reply_to_id?: number;
   attachment_ids?: number[];
+  expires_in?: number;
+  view_once?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -28,6 +30,11 @@ export class ChatApi {
     return this.http.post<Conversation>(`${this.api}/conversation/direct`, { friendId });
   }
 
+  /** Profile of a contact or chat partner (404 for anyone else). */
+  public user(id: number): Observable<User> {
+    return this.http.get<User>(`${this.api}/user/${id}`);
+  }
+
   public messages(conversationId: number, before?: number, limit = 30): Observable<MessagePage> {
     const params: Record<string, string> = { limit: String(limit) };
     if (before) params['before'] = String(before);
@@ -40,6 +47,11 @@ export class ChatApi {
 
   public markRead(conversationId: number, messageId?: number): Observable<{ lastReadMessageId: number }> {
     return this.http.post<{ lastReadMessageId: number }>(`${this.api}/conversation/${conversationId}/read`, messageId ? { messageId } : {});
+  }
+
+  /** «Autodestruir»: deletes the chat, its messages and files for both people. */
+  public destroy(conversationId: number): Observable<void> {
+    return this.http.post<void>(`${this.api}/conversation/${conversationId}/destroy`, {});
   }
 
   public leave(conversationId: number): Observable<void> {
