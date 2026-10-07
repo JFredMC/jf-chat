@@ -19,6 +19,7 @@ const SERVER_EVENTS: (keyof ServerEvents)[] = [
   'presence_snapshot',
   'presence',
   'friendship_updated',
+  'user_updated',
   'session_expired',
 ];
 

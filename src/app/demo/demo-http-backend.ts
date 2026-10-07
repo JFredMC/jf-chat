@@ -59,6 +59,17 @@ export class DemoHttpBackend implements HttpBackend {
           };
           return { status: 201, body: this.server.upload(token, Number(upload[1]), demoFile) };
         }
+        if (path === '/auth/me/avatar' && request.method === 'POST' && request.body instanceof FormData) {
+          const file = request.body.get('file');
+          if (!(file instanceof Blob)) throw new DemoHttpError(400, 'Falta la imagen');
+          await wait(300);
+          if (cancelled) return null;
+          const url = await readAsDataUrl(file);
+          return {
+            status: 201,
+            body: this.server.uploadAvatar(token, { name: 'avatar', type: file.type, size: file.size, url, persistable: true }),
+          };
+        }
         await wait(120 + Math.random() * 180);
         if (cancelled) return null;
         return this.server.handle({ method: request.method, path, query, body: request.body, token });
