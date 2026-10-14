@@ -210,6 +210,11 @@ export class AuthStore {
     return this.http.patch<AuthSession>(`${this.api}/auth/me/username`, { username }).pipe(map((session) => this.apply(session)));
   }
 
+  /** Deletes the account and everything in it on the server. No undo. */
+  public deleteAccount(password: string): Observable<void> {
+    return this.http.delete<void>(`${this.api}/auth/me`, { body: { password } });
+  }
+
   public changePassword(currentPassword: string, newPassword: string): Observable<User> {
     return this.http
       .post<AuthSession>(`${this.api}/auth/me/password`, { currentPassword, newPassword })

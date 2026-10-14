@@ -1,3 +1,5 @@
+import { ConfirmService } from '../../core/ui/confirm.service';
+import { PanicService } from '../../core/privacy/panic.service';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, model, signal, untracked, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { errorMessage } from '../../core/api-error';
@@ -152,6 +154,20 @@ import { sameAs, strongPassword } from '../auth/validators';
           <p class="text-xs text-gray-500">Al cambiarla se cerrará tu sesión en los demás dispositivos.</p>
           <button type="submit" class="btn-secondary" [disabled]="savingPassword()">Cambiar contraseña</button>
         </form>
+
+        <form class="space-y-3 rounded-xl border border-rose-300 p-4 dark:border-rose-900" (ngSubmit)="deleteAccount()" data-testid="delete-account-section">
+          <h3 class="font-semibold text-rose-600 dark:text-rose-400">Borrar mi cuenta</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Se borra todo y para siempre: tus chats (también del lado de tu pareja), fotos, videos, contactos y la cuenta. Este dispositivo queda limpio.
+          </p>
+          <label class="label" for="d-password">Tu contraseña</label>
+          <input id="d-password" class="input" type="password" name="d-password" autocomplete="current-password"
+            [value]="deletePassword()" (input)="deletePassword.set($any($event.target).value)" data-testid="delete-password" />
+          <button type="submit" class="w-full rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+            [disabled]="deleting() || !deletePassword()" data-testid="delete-account">
+            {{ deleting() ? 'Borrando…' : 'Borrar mi cuenta' }}
+          </button>
+        </form>
       </div>
     </dialog>
   `,
@@ -167,6 +183,10 @@ export class ProfileDialogComponent {
   protected readonly savingPrivacy = signal(false);
   protected readonly savingPassword = signal(false);
   protected readonly newUsername = signal('');
+  protected readonly deletePassword = signal('');
+  protected readonly deleting = signal(false);
+  private readonly confirm = inject(ConfirmService);
+  private readonly panic = inject(PanicService);
   protected readonly savingUsername = signal(false);
   protected readonly usernameValid = computed(() => /^[a-z0-9._]{3,30}$/.test(this.newUsername().trim().toLowerCase()));
   protected readonly usernameChanged = computed(() => this.newUsername().trim().toLowerCase() !== (this.auth.user()?.username ?? ''));
@@ -305,6 +325,29 @@ export class ProfileDialogComponent {
       error: (error: unknown) => {
         this.savingPrivacy.set(false);
         this.toast.error(errorMessage(error, 'No se pudo guardar'));
+      },
+    });
+  }
+
+  protected async deleteAccount(): Promise<void> {
+    const password = this.deletePassword();
+    if (!password) return;
+    const ok = await this.confirm.ask({
+      title: '¿Borrar tu cuenta para siempre?',
+      text: 'Se borran tus chats, archivos, contactos y la cuenta. No se puede deshacer.',
+      confirmLabel: 'Borrar todo',
+      danger: true,
+    });
+    if (!ok) return;
+    this.deleting.set(true);
+    this.auth.deleteAccount(password).subscribe({
+      next: () => {
+        this.deletePassword.set('');
+        void this.panic.wipe();
+      },
+      error: (error: unknown) => {
+        this.deleting.set(false);
+        this.toast.error(errorMessage(error, 'No se pudo borrar la cuenta'));
       },
     });
   }

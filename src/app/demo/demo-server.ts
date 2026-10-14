@@ -196,6 +196,12 @@ export class DemoServer {
     if (me === null) throw new DemoHttpError(401, 'No autorizado');
 
     if (route === 'GET /auth/me') return { status: 200, body: this.publicUser(this.findUser(me)!) };
+    if (route === 'DELETE /auth/me') {
+      // Like the API it needs the password; in the demo it simply starts over.
+      if (this.findUser(me)!.password !== String(body['password'] ?? '')) throw new DemoHttpError(401, 'La contraseña no es correcta');
+      this.reset();
+      return { status: 204, body: null };
+    }
     if (route === 'PATCH /auth/me') return { status: 200, body: this.updateProfile(me, body) };
     if (route === 'DELETE /auth/me/avatar') return { status: 200, body: this.setAvatar(me, null) };
     if (route === 'PATCH /auth/me/username') return { status: 200, body: this.changeUsername(me, body) };
