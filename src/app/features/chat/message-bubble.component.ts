@@ -32,7 +32,7 @@ export function countdownLabel(ms: number): string {
   },
   template: `
     <div
-      class="relative flex max-w-[82%] flex-col sm:max-w-[68%]"
+      class="relative flex max-w-[85%] min-w-0 flex-col sm:max-w-[68%]"
       [class.items-end]="mine()"
       [class.items-start]="!mine()"
       [style.transform]="swipe() ? 'translateX(' + swipe() + 'px)' : null"
@@ -45,7 +45,7 @@ export function countdownLabel(ms: number): string {
         <span class="mb-0.5 px-3 text-xs font-medium text-cyan-600 dark:text-cyan-400">{{ senderName() }}</span>
       }
       <div
-        class="bubble relative px-3 pt-1.5 pb-1 text-[0.94rem] leading-snug shadow-sm"
+        class="bubble relative max-w-full min-w-0 px-3 pt-1.5 pb-1 text-[0.94rem] leading-snug shadow-sm"
         [class]="bubbleClass()"
         [class.opacity-70]="message().pending"
         [class.bubble-tail-mine]="mine() && last()"
@@ -65,7 +65,7 @@ export function countdownLabel(ms: number): string {
             data-testid="reply-quote"
           >
             <span class="block font-semibold" [class]="mine() ? 'text-white' : 'text-cyan-700 dark:text-cyan-300'">{{ quotedName() }}</span>
-            <span class="line-clamp-2 opacity-90">{{ quote(quoted) }}</span>
+            <span class="line-clamp-2 opacity-90 [overflow-wrap:anywhere]">{{ quote(quoted) }}</span>
           </button>
         } @else if (message().reply_to_id) {
           <p class="mb-1 rounded-lg px-2 py-1 text-xs italic opacity-70" data-testid="reply-quote-gone">Respondía a un mensaje que ya se autodestruyó</p>
@@ -92,15 +92,8 @@ export function countdownLabel(ms: number): string {
               <span aria-hidden="true">👁</span> Mantén presionado para ver
             </button>
           } @else {
-            <p class="break-words whitespace-pre-wrap" [class.select-none]="message().view_once">
-              @for (part of parts(); track $index) {
-                @if (part.href) {
-                  <a [href]="part.href" target="_blank" rel="noopener noreferrer nofollow" class="break-all underline underline-offset-2">{{ part.text }}</a>
-                } @else {
-                  {{ part.text }}
-                }
-              }
-            </p>
+            <!-- One line on purpose: with pre-wrap, template whitespace would show as a leading space. -->
+            <p class="whitespace-pre-wrap [overflow-wrap:anywhere]" [class.select-none]="message().view_once">@for (part of parts(); track $index) {@if (part.href) {<a [href]="part.href" target="_blank" rel="noopener noreferrer nofollow" class="underline underline-offset-2">{{ part.text }}</a>} @else {{{ part.text }}}}</p>
           }
         }
         <span class="float-right mt-1 ml-3 flex translate-y-0.5 items-center gap-1 text-[0.68rem]" [class]="mine() ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'">
@@ -108,7 +101,7 @@ export function countdownLabel(ms: number): string {
             <span title="Ver una vez" aria-label="Ver una vez">👁</span>
           }
           @if (deadlineSoon(); as left) {
-            <span class="tabular-nums" [attr.aria-label]="'Se autodestruye en ' + left" data-testid="countdown">⏱ {{ left }}</span>
+            <span class="rounded-full bg-black/10 px-1.5 tabular-nums dark:bg-white/10" [attr.aria-label]="'Se autodestruye en ' + left" [attr.title]="'Se autodestruye en ' + left" data-testid="countdown">⏱ {{ left }}</span>
           }
           <time [attr.datetime]="message().created_at">{{ time() }}</time>
           @if (mine() && state(); as current) {
