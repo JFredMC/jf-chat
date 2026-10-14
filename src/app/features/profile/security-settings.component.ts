@@ -31,6 +31,24 @@ import { BrandLogoComponent } from '../../shared/brand.component';
           </label>
           <button type="submit" class="btn-secondary" [disabled]="busy() || current.length < 4" data-testid="pin-remove">Quitar PIN</button>
         </form>
+        <div class="space-y-2 rounded-xl bg-gray-50 p-3 dark:bg-gray-900/60" data-testid="decoy-section">
+          <p class="text-sm font-medium">PIN señuelo</p>
+          <p class="text-xs text-gray-500">Un segundo PIN que abre Velo vacío, sin chats ni contactos. Úsalo si alguien te obliga a abrirlo.</p>
+          @if (lock.hasDecoy()) {
+            <div class="flex items-center justify-between gap-2 text-sm">
+              <span>Activo en este dispositivo.</span>
+              <button type="button" class="btn-secondary" (click)="removeDecoy()" data-testid="decoy-remove">Quitar</button>
+            </div>
+          } @else {
+            <form class="flex items-end gap-2" (ngSubmit)="setDecoy()">
+              <label class="min-w-0 flex-1">
+                <span class="label">PIN señuelo</span>
+                <input class="input" type="password" inputmode="numeric" maxlength="8" autocomplete="off" name="decoy" [(ngModel)]="decoyPin" data-testid="decoy-new" />
+              </label>
+              <button type="submit" class="btn-secondary" [disabled]="busy() || decoyPin.length < 4" data-testid="decoy-save">Guardar</button>
+            </form>
+          }
+        </div>
       } @else {
         <p class="text-xs text-gray-500">Pide un PIN de 4 a 8 cifras al abrir Velo y tras un rato sin uso. Si alguien falla 5 veces, se borran los datos de este dispositivo.</p>
         <form class="grid grid-cols-2 gap-2" (ngSubmit)="setPin()">
@@ -79,6 +97,7 @@ export class SecuritySettingsComponent implements OnInit {
   protected pin = '';
   protected confirm = '';
   protected current = '';
+  protected decoyPin = '';
 
   protected readonly hint = computed(() => {
     switch (this.push.state()) {
@@ -110,6 +129,26 @@ export class SecuritySettingsComponent implements OnInit {
       this.pin = this.confirm = '';
       this.busy.set(false);
     }
+  }
+
+  protected async setDecoy(): Promise<void> {
+    if (!PIN_PATTERN.test(this.decoyPin)) return this.toast.error('El PIN debe tener de 4 a 8 cifras');
+    this.busy.set(true);
+    try {
+      const result = await this.lock.setDecoy(this.decoyPin);
+      if (result === 'same') this.toast.error('Usa un PIN distinto al real');
+      else this.toast.success('PIN señuelo guardado');
+    } catch {
+      this.toast.error('No se pudo guardar el PIN señuelo');
+    } finally {
+      this.decoyPin = '';
+      this.busy.set(false);
+    }
+  }
+
+  protected removeDecoy(): void {
+    this.lock.removeDecoy();
+    this.toast.success('PIN señuelo quitado');
   }
 
   protected async removePin(): Promise<void> {

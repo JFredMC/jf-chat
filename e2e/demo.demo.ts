@@ -497,6 +497,37 @@ test('PIN lock: sealed session, asks on open and on demand, wrong PINs are count
   await expect.poll(() => page.evaluate(() => localStorage.getItem('velo.session')?.startsWith('pin1.'))).toBe(false);
 });
 
+test('decoy PIN opens an empty Velo; the real PIN opens the real one', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
+  await dialog.getByTestId('pin-new').fill('4821');
+  await dialog.getByTestId('pin-confirm').fill('4821');
+  await dialog.getByTestId('pin-save').click();
+  await expect(page.getByText('PIN activado')).toBeVisible();
+  await dialog.getByTestId('decoy-new').fill('4821');
+  await dialog.getByTestId('decoy-save').click();
+  await expect(page.getByText('Usa un PIN distinto al real')).toBeVisible();
+  await dialog.getByTestId('decoy-new').fill('1111');
+  await dialog.getByTestId('decoy-save').click();
+  await expect(page.getByText('PIN señuelo guardado')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+
+  await page.reload();
+  const lock = page.getByTestId('lock-screen');
+  await lock.getByTestId('lock-pin').fill('1111');
+  await lock.getByTestId('lock-pin').press('Enter');
+  await expect(page.getByTestId('decoy-home')).toBeVisible();
+  await expect(page.getByTestId('decoy-home')).toContainText('Aún no tienes chats');
+  await expect(page.getByText('luna')).toHaveCount(0);
+
+  await page.reload();
+  await lock.getByTestId('lock-pin').fill('4821');
+  await lock.getByTestId('lock-pin').press('Enter');
+  await expect(page.getByTestId('me-name')).toHaveText('demo');
+  await expect(page.getByTestId('decoy-home')).toHaveCount(0);
+});
+
 test('panic button: signs out and wipes this device at once', async ({ page }) => {
   await loginAsDemo(page);
   await page.getByTestId('open-profile').click();
