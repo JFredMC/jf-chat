@@ -14,12 +14,15 @@ export interface User {
   hide_last_seen?: boolean;
   /** Privacy: others never see the "escribiendo…" indicator. */
   hide_typing?: boolean;
+  /** Privacy (reciprocal): no «leído» either way. */
+  hide_read_receipts?: boolean;
   created_at?: string;
 }
 
 export interface PrivacySettings {
   hide_last_seen: boolean;
   hide_typing: boolean;
+  hide_read_receipts: boolean;
 }
 
 export interface InviteCode {

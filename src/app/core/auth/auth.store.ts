@@ -201,7 +201,7 @@ export class AuthStore {
     if (current && current.id === user.id) this.currentUser.set({ ...current, ...user });
   }
 
-  public updateProfile(changes: Partial<Pick<User, 'status_message' | 'hide_last_seen' | 'hide_typing'>>): Observable<User> {
+  public updateProfile(changes: Partial<Pick<User, 'status_message' | 'hide_last_seen' | 'hide_typing' | 'hide_read_receipts'>>): Observable<User> {
     return this.http.patch<User>(`${this.api}/auth/me`, changes).pipe(tap((user) => this.currentUser.set(user)));
   }
 

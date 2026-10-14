@@ -97,10 +97,18 @@ import { sameAs, strongPassword } from '../auth/validators';
           <label class="flex cursor-pointer items-start justify-between gap-4">
             <span>
               <span class="block text-sm font-medium">Ocultar «escribiendo…»</span>
-              <span class="block text-xs text-gray-500">Tu pareja no ve cuándo estás escribiendo.</span>
+              <span class="block text-xs text-gray-500">Tu pareja no ve cuándo escribes, y tú tampoco ves cuándo escribe.</span>
             </span>
             <input type="checkbox" class="switch" [checked]="!!auth.user()?.hide_typing" [disabled]="savingPrivacy()"
               (change)="savePrivacy({ hide_typing: $any($event.target).checked })" data-testid="hide-typing" />
+          </label>
+          <label class="flex cursor-pointer items-start justify-between gap-4">
+            <span>
+              <span class="block text-sm font-medium">Ocultar «leído»</span>
+              <span class="block text-xs text-gray-500">Tu pareja no sabe si leíste, y tú tampoco ves si leyó: solo «entregado».</span>
+            </span>
+            <input type="checkbox" class="switch" [checked]="!!auth.user()?.hide_read_receipts" [disabled]="savingPrivacy()"
+              (change)="savePrivacy({ hide_read_receipts: $any($event.target).checked })" data-testid="hide-read-receipts" />
           </label>
           <label class="flex cursor-pointer items-start justify-between gap-4">
             <span>
