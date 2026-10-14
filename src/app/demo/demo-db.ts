@@ -16,6 +16,7 @@ export interface DbUser {
   invite_code: string;
   hide_last_seen?: boolean;
   hide_typing?: boolean;
+  hide_read_receipts?: boolean;
   /** Simulated people: they answer, type and read. */
   bot?: { online: boolean; replies: string[] };
 }

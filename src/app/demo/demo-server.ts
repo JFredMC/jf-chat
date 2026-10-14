@@ -145,7 +145,8 @@ export class DemoServer {
           const me = this.findUser(userId)!;
           // Like the API: hidden typing is dropped server-side.
           if (me.hide_typing) return { ok: true };
-          this.emitTo(this.otherMemberIds(conversation, userId), {
+          // Reciprocal: who hides their typing doesn't see the others'.
+          this.emitTo(this.otherMemberIds(conversation, userId).filter((id) => !this.findUser(id)?.hide_typing), {
             type: 'typing',
             data: { conversationId, userId, username: me.username, isTyping },
           });
@@ -363,6 +364,7 @@ export class DemoServer {
     const hidingChanged = 'hide_last_seen' in body && Boolean(body['hide_last_seen']) !== Boolean(user.hide_last_seen);
     if ('hide_last_seen' in body) user.hide_last_seen = Boolean(body['hide_last_seen']);
     if ('hide_typing' in body) user.hide_typing = Boolean(body['hide_typing']);
+    if ('hide_read_receipts' in body) user.hide_read_receipts = Boolean(body['hide_read_receipts']);
     this.save();
     this.announceProfile(user);
     if (hidingChanged) this.broadcastPresence(user.id, true);
@@ -581,7 +583,10 @@ export class DemoServer {
       member.last_read_message_id = read;
       member.last_delivered_message_id = Math.max(member.last_delivered_message_id ?? 0, read);
       this.save();
-      this.emitTo(this.memberIds(conversation), { type: 'conversation_read', data: { conversationId, userId: me, lastReadMessageId: read } });
+      // Like the API: «ocultar leído» works both ways.
+      const hides = (id: number) => !!this.findUser(id)?.hide_read_receipts;
+      const audience = hides(me) ? [me] : this.memberIds(conversation).filter((id) => id === me || !hides(id));
+      this.emitTo(audience, { type: 'conversation_read', data: { conversationId, userId: me, lastReadMessageId: read } });
     }
     this.startViewOnceTimers(me, conversation, read);
     return read;
@@ -742,7 +747,7 @@ export class DemoServer {
   }
 
   private botTyping(bot: DbUser, to: number, conversationId: number, isTyping: boolean): void {
-    if (bot.hide_typing) return;
+    if (bot.hide_typing || this.findUser(to)?.hide_typing) return;
     this.emitTo([to], { type: 'typing', data: { conversationId, userId: bot.id, username: bot.username, isTyping } });
   }
 
@@ -847,6 +852,7 @@ export class DemoServer {
       last_seen: presence.lastSeen,
       hide_last_seen: !!user.hide_last_seen,
       hide_typing: !!user.hide_typing,
+      hide_read_receipts: !!user.hide_read_receipts,
       created_at: user.created_at,
     };
   }
@@ -879,7 +885,8 @@ export class DemoServer {
         user_id: m.user_id,
         user: this.publicUser(this.findUser(m.user_id)!),
         role: 'member',
-        last_read_message_id: m.last_read_message_id,
+        last_read_message_id:
+          m.user_id !== me && (this.findUser(me)?.hide_read_receipts || this.findUser(m.user_id)?.hide_read_receipts) ? null : m.last_read_message_id,
         last_delivered_message_id: m.last_delivered_message_id,
         left_at: m.left_at,
       })),
