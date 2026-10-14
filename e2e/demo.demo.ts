@@ -412,7 +412,7 @@ test('the partner profile opens from the header; «Autodestruir» asks first and
   await expect(page.getByTestId('message')).toHaveCount(0);
 });
 
-test('photos are only visible while held: canvas with a watermark, nothing to save', async ({ page }) => {
+test('photos are only visible while held: canvas without watermark, nothing to save', async ({ page }) => {
   await loginAsDemo(page);
   await openChat(page, 'luna');
   const tile = page.getByTestId('secure-media').first();
@@ -427,23 +427,6 @@ test('photos are only visible while held: canvas with a watermark, nothing to sa
   await expect(viewer).toBeVisible();
   const canvas = page.getByTestId('media-canvas');
   await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width)).toBeGreaterThan(100);
-  // The watermark is drawn into the pixels themselves: compare with the bare photo.
-  const changed = await canvas.evaluate(async (c: HTMLCanvasElement) => {
-    const bare = new Image();
-    bare.src = 'images/demo-foto.webp';
-    await bare.decode();
-    const ref = document.createElement('canvas');
-    ref.width = c.width;
-    ref.height = c.height;
-    const refCtx = ref.getContext('2d')!;
-    refCtx.drawImage(bare, 0, 0, c.width, c.height);
-    const a = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
-    const b = refCtx.getImageData(0, 0, c.width, c.height).data;
-    let count = 0;
-    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 25) count++;
-    return count / (a.length / 4);
-  });
-  expect(changed).toBeGreaterThan(0.01);
   // No context menu, no dragging.
   expect(await canvas.evaluate((c) => c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })))).toBe(false);
   await expect(viewer.locator('img, a[href]')).toHaveCount(0);

@@ -1,15 +1,8 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, inject, input, signal, viewChild } from '@angular/core';
-import { AuthStore } from '../../core/auth/auth.store';
 import type { Attachment } from '../../core/models';
 import { ToastService } from '../../core/ui/toast.service';
 import { ChatApi } from './chat.api';
-
-/** Text stamped over every photo or video: who is looking, and when. */
-export function watermarkText(username: string, at: Date): string {
-  const two = (n: number) => String(n).padStart(2, '0');
-  return `@${username} · ${two(at.getDate())}/${two(at.getMonth() + 1)} ${two(at.getHours())}:${two(at.getMinutes())}`;
-}
 
 /** Fits a w×h image inside a box, never upscaling. */
 export function fitInside(w: number, h: number, boxW: number, boxH: number): { width: number; height: number } {
@@ -17,34 +10,12 @@ export function fitInside(w: number, h: number, boxW: number, boxH: number): { w
   return { width: Math.max(1, Math.round(w * scale)), height: Math.max(1, Math.round(h * scale)) };
 }
 
-/** Diagonal, repeated watermark drawn on a canvas context. */
-export function drawWatermark(ctx: CanvasRenderingContext2D, width: number, height: number, text: string, ratio = 1): void {
-  ctx.save();
-  ctx.font = `600 ${Math.round(15 * ratio)}px Inter, system-ui, sans-serif`;
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
-  ctx.strokeStyle = 'rgba(0,0,0,0.18)';
-  ctx.lineWidth = Math.max(1, ratio);
-  ctx.translate(width / 2, height / 2);
-  ctx.rotate(-Math.PI / 7);
-  const stepX = ctx.measureText(text).width + 60 * ratio;
-  const stepY = 70 * ratio;
-  const reach = Math.hypot(width, height);
-  for (let y = -reach; y < reach; y += stepY) {
-    const offset = (Math.round(y / stepY) % 2) * (stepX / 2);
-    for (let x = -reach; x < reach; x += stepX) {
-      ctx.strokeText(text, x + offset, y);
-      ctx.fillText(text, x + offset, y);
-    }
-  }
-  ctx.restore();
-}
-
 const URL_MARGIN_MS = 5_000;
 
 /**
  * Photos and videos are never shown inline nor downloadable: the user holds
  * the tile to see them full screen, drawn on a canvas (images) or played
- * without controls (videos), with the viewer's username stamped on top.
+ * without controls (videos), with no stamp on top.
  * Releasing hides them and drops the pixels. The short-lived signed URL is
  * only requested while holding.
  */
@@ -95,7 +66,6 @@ const URL_MARGIN_MS = 5_000;
             (loadeddata)="loading.set(false)"
             data-testid="media-video"
           ></video>
-          <canvas #mark class="pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true"></canvas>
         } @else {
           <canvas #canvas class="pointer-events-none max-h-full max-w-full" data-testid="media-canvas" [attr.aria-label]="attachment().file_name"></canvas>
         }
@@ -110,7 +80,6 @@ const URL_MARGIN_MS = 5_000;
 })
 export class SecureMediaComponent {
   private readonly api = inject(ChatApi);
-  private readonly auth = inject(AuthStore);
   private readonly toast = inject(ToastService);
   private readonly document = inject(DOCUMENT);
   public readonly attachment = input.required<Attachment>();
@@ -122,7 +91,6 @@ export class SecureMediaComponent {
   protected readonly loading = signal(false);
   protected readonly url = signal<string | null>(null);
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
-  private readonly mark = viewChild<ElementRef<HTMLCanvasElement>>('mark');
   private readonly video = viewChild<ElementRef<HTMLVideoElement>>('video');
   private signed: { url: string; until: number } | null = null;
   private session = 0;
@@ -177,7 +145,6 @@ export class SecureMediaComponent {
         if (session !== this.session) return;
         if (this.isVideo()) {
           this.url.set(url);
-          queueMicrotask(() => this.stampVideo());
         } else {
           this.paint(url, session);
         }
@@ -219,7 +186,6 @@ export class SecureMediaComponent {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.drawImage(image, 0, 0, box.width, box.height);
-      drawWatermark(ctx, box.width, box.height, this.stamp(), ratio);
       // Drop the decoded image (clearing src would fire onerror otherwise).
       image.onload = image.onerror = null;
       image.removeAttribute('src');
@@ -231,19 +197,5 @@ export class SecureMediaComponent {
       this.toast.error('No se pudo abrir');
     };
     image.src = url;
-  }
-
-  private stampVideo(): void {
-    const canvas = this.mark()?.nativeElement;
-    if (!canvas) return;
-    const ratio = this.document.defaultView?.devicePixelRatio ?? 1;
-    canvas.width = canvas.clientWidth * ratio;
-    canvas.height = canvas.clientHeight * ratio;
-    const ctx = canvas.getContext('2d');
-    if (ctx) drawWatermark(ctx, canvas.width, canvas.height, this.stamp(), ratio);
-  }
-
-  private stamp(): string {
-    return watermarkText(this.auth.user()?.username ?? 'velo', new Date());
   }
 }

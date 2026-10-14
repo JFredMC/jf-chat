@@ -24,12 +24,8 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// Tapping the notice only dismisses it: it opens nothing, so a glance at the
+// phone never lands on the chat.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
-      const open = windows.find((client) => client.url.startsWith(self.registration.scope));
-      return open ? open.focus() : self.clients.openWindow(self.registration.scope);
-    }),
-  );
 });
