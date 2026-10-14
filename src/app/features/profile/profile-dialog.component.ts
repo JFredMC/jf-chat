@@ -111,6 +111,22 @@ import { sameAs, strongPassword } from '../auth/validators';
           </label>
         </section>
 
+        <form class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" (ngSubmit)="changeUsername()" data-testid="username-section">
+          <h3 class="font-semibold">Nombre de usuario</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Cámbialo cuando quieras. Tus contactos y chats siguen igual; el nombre anterior no se guarda.</p>
+          <label class="label" for="u-name">Nuevo usuario</label>
+          <div class="flex gap-2">
+            <input id="u-name" class="input flex-1" name="username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="30"
+              [value]="newUsername()" (input)="newUsername.set($any($event.target).value)" data-testid="username-input" />
+            <button type="submit" class="btn-primary px-3 text-sm" [disabled]="savingUsername() || !usernameValid() || !usernameChanged()" data-testid="username-save">
+              {{ savingUsername() ? 'Guardando…' : 'Cambiar' }}
+            </button>
+          </div>
+          @if (newUsername() && !usernameValid()) {
+            <p class="field-error" role="alert">Entre 3 y 30 caracteres: letras, números, punto o guion bajo.</p>
+          }
+        </form>
+
         <app-security-settings class="block space-y-8" />
 
         <form class="space-y-4 border-t border-gray-200 pt-6 dark:border-gray-800" [formGroup]="password" (ngSubmit)="changePassword()">
@@ -150,6 +166,10 @@ export class ProfileDialogComponent {
   protected readonly brand = inject(BrandService);
   protected readonly savingPrivacy = signal(false);
   protected readonly savingPassword = signal(false);
+  protected readonly newUsername = signal('');
+  protected readonly savingUsername = signal(false);
+  protected readonly usernameValid = computed(() => /^[a-z0-9._]{3,30}$/.test(this.newUsername().trim().toLowerCase()));
+  protected readonly usernameChanged = computed(() => this.newUsername().trim().toLowerCase() !== (this.auth.user()?.username ?? ''));
   protected readonly password = this.fb.group({
     current: ['', Validators.required],
     next: ['', [Validators.required, strongPassword]],
@@ -177,6 +197,7 @@ export class ProfileDialogComponent {
         // Only when opening: later profile updates must not reset what is being edited.
         const user = untracked(() => this.auth.user());
         this.password.reset();
+        this.newUsername.set(user?.username ?? '');
         this.status.set(user?.status_message ?? '');
         this.photoError.set(null);
         if (!element.open) element.showModal();
@@ -284,6 +305,22 @@ export class ProfileDialogComponent {
       error: (error: unknown) => {
         this.savingPrivacy.set(false);
         this.toast.error(errorMessage(error, 'No se pudo guardar'));
+      },
+    });
+  }
+
+  protected changeUsername(): void {
+    if (!this.usernameValid() || !this.usernameChanged()) return;
+    this.savingUsername.set(true);
+    this.auth.changeUsername(this.newUsername().trim().toLowerCase()).subscribe({
+      next: (user) => {
+        this.savingUsername.set(false);
+        this.newUsername.set(user.username);
+        this.toast.success('Listo, ahora eres @' + user.username);
+      },
+      error: (error: unknown) => {
+        this.savingUsername.set(false);
+        this.toast.error(errorMessage(error, 'No se pudo cambiar el usuario'));
       },
     });
   }

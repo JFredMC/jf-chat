@@ -205,6 +205,11 @@ export class AuthStore {
     return this.http.patch<User>(`${this.api}/auth/me`, changes).pipe(tap((user) => this.currentUser.set(user)));
   }
 
+  /** New name if nobody has it (409 otherwise); the token is renewed. */
+  public changeUsername(username: string): Observable<User> {
+    return this.http.patch<AuthSession>(`${this.api}/auth/me/username`, { username }).pipe(map((session) => this.apply(session)));
+  }
+
   public changePassword(currentPassword: string, newPassword: string): Observable<User> {
     return this.http
       .post<AuthSession>(`${this.api}/auth/me/password`, { currentPassword, newPassword })
