@@ -2,6 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthStore } from '../auth/auth.store';
+import { hasDecoyPin, isDecoyPin, removeDecoyPin, saveDecoyPin } from './decoy-pin';
 import { PanicService } from './panic.service';
 
 const SETTINGS_KEY = 'velo.lock';
@@ -45,6 +46,9 @@ export class PinLockService {
   public readonly locked = signal(this.auth.hasPin());
   public readonly failures = signal(Number(read(FAILS_KEY) ?? 0) || 0);
   public readonly minutes = signal(Number(read(SETTINGS_KEY) ?? 5) || 5);
+  /** Opened with the decoy PIN: an empty Velo is shown instead of the real one. */
+  public readonly decoy = signal(false);
+  public readonly hasDecoy = signal(hasDecoyPin());
   private lastActivity = Date.now();
   private hiddenAt: number | null = null;
 
@@ -86,13 +90,22 @@ export class PinLockService {
 
   /** Locks now (only meaningful with a PIN and an open session). */
   public lock(): void {
-    if (this.enabled() && this.auth.isAuthenticated() && !this.locked()) this.locked.set(true);
+    if (this.enabled() && (this.auth.isAuthenticated() || this.decoy()) && !this.locked()) this.locked.set(true);
   }
 
   /** Returns 'ok', 'wrong' or 'wiped' (too many attempts). */
   public async unlock(pin: string): Promise<'ok' | 'wrong' | 'wiped'> {
+    if (await isDecoyPin(pin)) {
+      this.decoy.set(true);
+      this.failures.set(0);
+      write(FAILS_KEY, null);
+      this.locked.set(false);
+      this.lastActivity = Date.now();
+      return 'ok';
+    }
     const wasActive = this.auth.isAuthenticated();
     if (await this.auth.unlockWithPin(pin)) {
+      this.decoy.set(false);
       this.failures.set(0);
       write(FAILS_KEY, null);
       this.locked.set(false);
@@ -118,7 +131,22 @@ export class PinLockService {
   }
 
   public async disable(pin: string): Promise<boolean> {
-    return this.auth.disablePin(pin);
+    const ok = await this.auth.disablePin(pin);
+    if (ok) this.removeDecoy();
+    return ok;
+  }
+
+  /** Saves the decoy PIN; refuses the real PIN. */
+  public async setDecoy(pin: string): Promise<'ok' | 'same'> {
+    if (await this.auth.unlockWithPin(pin)) return 'same';
+    await saveDecoyPin(pin);
+    this.hasDecoy.set(true);
+    return 'ok';
+  }
+
+  public removeDecoy(): void {
+    removeDecoyPin();
+    this.hasDecoy.set(false);
   }
 
   /** "Forgot my PIN" or too many attempts: wipe and sign in again. */
