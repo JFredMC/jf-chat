@@ -12,6 +12,7 @@ export class BrandTitleStrategy extends TitleStrategy {
   public override updateTitle(snapshot: RouterStateSnapshot): void {
     const page = this.buildTitle(snapshot);
     const name = this.brand.name();
-    this.title.setTitle(page ? `${page} · ${name}` : name);
+    // Disguised: always just «Notas», so the browser history reveals nothing.
+    this.title.setTitle(page && !this.brand.disguised() ? `${page} · ${name}` : name);
   }
 }

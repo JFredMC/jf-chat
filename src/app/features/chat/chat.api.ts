@@ -1,6 +1,7 @@
+import { stripImage } from '../../shared/strip-image';
 import { HttpClient, type HttpEvent } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, from, switchMap } from 'rxjs';
 import { API_URL } from '../../core/config';
 import type { Attachment, Conversation, Message, MessagePage, User } from '../../core/models';
 
@@ -59,19 +60,28 @@ export class ChatApi {
   }
 
   public upload(conversationId: number, file: File): Observable<Attachment> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<Attachment>(`${this.api}/conversation/${conversationId}/attachments`, form);
+    return from(stripImage(file)).pipe(
+      switchMap((clean) => {
+        const form = new FormData();
+        form.append('file', clean, clean.name);
+        return this.http.post<Attachment>(`${this.api}/conversation/${conversationId}/attachments`, form);
+      }),
+    );
   }
 
   /** Upload with progress events (for the attachment tray). */
   public uploadWithProgress(conversationId: number, file: File): Observable<HttpEvent<Attachment>> {
-    const form = new FormData();
-    form.append('file', file, file.name);
-    return this.http.post<Attachment>(`${this.api}/conversation/${conversationId}/attachments`, form, {
-      reportProgress: true,
-      observe: 'events',
-    });
+    // Photos go without metadata (GPS, camera, date) and with a neutral name.
+    return from(stripImage(file)).pipe(
+      switchMap((clean) => {
+        const form = new FormData();
+        form.append('file', clean, clean.name);
+        return this.http.post<Attachment>(`${this.api}/conversation/${conversationId}/attachments`, form, {
+          reportProgress: true,
+          observe: 'events',
+        });
+      }),
+    );
   }
 
   public attachmentUrl(id: number): Observable<{ url: string; expiresIn: number }> {
