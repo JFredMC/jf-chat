@@ -203,6 +203,16 @@ describe('DemoServer (in-browser API)', () => {
     expect(user.username).toBe('demo');
   });
 
+  it('changes the username if nobody has it, with a fresh session', () => {
+    const { accessToken } = login();
+    expect(error(() => call('PATCH', '/auth/me/username', { username: 'luna' }, accessToken))).toMatchObject({ status: 409 });
+    expect(error(() => call('PATCH', '/auth/me/username', { username: 'x' }, accessToken))).toMatchObject({ status: 400 });
+    const session = call('PATCH', '/auth/me/username', { username: 'Otro.Nombre' }, accessToken).body as { user: { username: string } };
+    expect(session.user.username).toBe('otro.nombre');
+    expect(call('GET', '/auth/username-available', null, null, 'username=demo').body).toEqual({ available: true });
+    server.reset();
+  });
+
   it('starts over on reset', () => {
     call('POST', '/auth/register', { username: 'temporal', password: 'Secreta123' });
     server.reset();

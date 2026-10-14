@@ -198,6 +198,7 @@ export class DemoServer {
     if (route === 'GET /auth/me') return { status: 200, body: this.publicUser(this.findUser(me)!) };
     if (route === 'PATCH /auth/me') return { status: 200, body: this.updateProfile(me, body) };
     if (route === 'DELETE /auth/me/avatar') return { status: 200, body: this.setAvatar(me, null) };
+    if (route === 'PATCH /auth/me/username') return { status: 200, body: this.changeUsername(me, body) };
     if (route === 'POST /auth/me/password') return this.created(200, this.changePassword(me, body));
     if (route === 'GET /auth/me/invite') return { status: 200, body: { code: this.formatCode(this.findUser(me)!.invite_code) } };
     if (route === 'POST /auth/me/invite/rotate') return { status: 200, body: this.rotateInvite(me) };
@@ -379,6 +380,20 @@ export class DemoServer {
   /** Like the API's `user_updated`: to the user and their friends and contacts. */
   private announceProfile(user: DbUser): void {
     this.emitTo([user.id, ...this.contactsOf(user.id)], { type: 'user_updated', data: this.publicUser(user) });
+  }
+
+  /** Like the API: unique names, no history; returns a fresh session. */
+  private changeUsername(userId: number, body: Record<string, unknown>): AuthSession {
+    const username = String(body['username'] ?? '').trim().toLowerCase();
+    if (!/^[a-z0-9._]{3,30}$/.test(username)) {
+      throw new DemoHttpError(400, 'El usuario debe tener entre 3 y 30 caracteres: letras, números, punto o guion bajo');
+    }
+    const user = this.findUser(userId)!;
+    if (this.db.users.some((u) => u.username === username && u.id !== userId)) throw new DemoHttpError(409, 'Ese nombre de usuario ya está en uso');
+    user.username = username;
+    this.save();
+    this.announceProfile(user);
+    return this.session(user);
   }
 
   private changePassword(userId: number, body: Record<string, unknown>): AuthSession {
