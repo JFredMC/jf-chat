@@ -27,7 +27,7 @@ export function countdownLabel(ms: number): string {
     class: 'group/msg relative flex w-full',
     '[class.justify-end]': 'mine()',
     '[class.mt-3]': 'first()',
-    '[class.mt-0.5]': '!first()',
+    '[class.mt-1.5]': '!first()',
     '[attr.id]': "'msg-' + message().id",
   },
   template: `
