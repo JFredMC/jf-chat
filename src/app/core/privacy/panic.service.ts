@@ -42,6 +42,9 @@ export function wipeLocalData(storage: Storage = localStorage, session: Storage 
 async function clearWorkers(): Promise<void> {
   try {
     if ('caches' in globalThis) for (const key of await caches.keys()) await caches.delete(key);
+    if ('indexedDB' in globalThis && typeof indexedDB.databases === 'function') {
+      for (const db of await indexedDB.databases()) if (db.name) indexedDB.deleteDatabase(db.name);
+    }
     if ('serviceWorker' in navigator) for (const registration of await navigator.serviceWorker.getRegistrations()) await registration.unregister();
   } catch {
     /* ignore */

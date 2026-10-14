@@ -1,6 +1,8 @@
-import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, effect, inject, input, signal } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { API_URL } from '../core/config';
 import { avatarSrc, displayName, type User } from '../core/models';
+import { AvatarUrlService } from './avatar-url.service';
 
 const COLORS = [
   'from-rose-500 to-pink-500',
@@ -61,10 +63,30 @@ export class AvatarComponent {
   /** An image that failed to load falls back to the initials. */
   protected readonly failed = signal<string | null>(null);
 
+  private readonly urls = inject(AvatarUrlService);
+  /** Signed URL of a private avatar (asked with the session), or a data:/blob: preview. */
+  private readonly resolved = signal<string | null>(null);
+
   protected readonly src = computed(() => {
-    const url = avatarSrc(this.user()?.avatar_url, this.api);
+    const url = this.resolved();
     return url && url !== this.failed() ? url : null;
   });
+
+  public constructor() {
+    let sub: Subscription | undefined;
+    effect(() => {
+      const raw = this.user()?.avatar_url;
+      sub?.unsubscribe();
+      this.resolved.set(null);
+      if (!raw) return;
+      if (raw.startsWith('/')) {
+        sub = this.urls.resolve(raw).subscribe({ next: (url) => this.resolved.set(url || null), error: () => this.resolved.set(null) });
+      } else {
+        this.resolved.set(avatarSrc(raw, this.api));
+      }
+    });
+    inject(DestroyRef).onDestroy(() => sub?.unsubscribe());
+  }
 
   protected readonly initials = computed(() => {
     const user = this.user();

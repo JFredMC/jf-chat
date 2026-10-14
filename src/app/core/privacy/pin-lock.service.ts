@@ -55,9 +55,11 @@ export class PinLockService {
     const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'] as const;
     events.forEach((name) => view.addEventListener(name, touch, { passive: true }));
     const onVisibility = () => {
-      if (this.document.visibilityState === 'hidden') this.hiddenAt = Date.now();
-      else {
-        if (this.hiddenAt !== null && Date.now() - this.hiddenAt >= this.timeoutMs()) this.lock();
+      // Leaving the app (switching apps, locking the phone) locks right away.
+      if (this.document.visibilityState === 'hidden') {
+        this.hiddenAt = Date.now();
+        this.lock();
+      } else {
         this.hiddenAt = null;
         touch();
       }
