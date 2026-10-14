@@ -412,7 +412,7 @@ test('the partner profile opens from the header; «Autodestruir» asks first and
   await expect(page.getByTestId('message')).toHaveCount(0);
 });
 
-test('photos are only visible while held: canvas with a watermark, nothing to save', async ({ page }) => {
+test('photos are only visible while held: canvas without watermark, nothing to save', async ({ page }) => {
   await loginAsDemo(page);
   await openChat(page, 'luna');
   const tile = page.getByTestId('secure-media').first();
@@ -427,23 +427,6 @@ test('photos are only visible while held: canvas with a watermark, nothing to sa
   await expect(viewer).toBeVisible();
   const canvas = page.getByTestId('media-canvas');
   await expect.poll(() => canvas.evaluate((c: HTMLCanvasElement) => c.width)).toBeGreaterThan(100);
-  // The watermark is drawn into the pixels themselves: compare with the bare photo.
-  const changed = await canvas.evaluate(async (c: HTMLCanvasElement) => {
-    const bare = new Image();
-    bare.src = 'images/demo-foto.webp';
-    await bare.decode();
-    const ref = document.createElement('canvas');
-    ref.width = c.width;
-    ref.height = c.height;
-    const refCtx = ref.getContext('2d')!;
-    refCtx.drawImage(bare, 0, 0, c.width, c.height);
-    const a = c.getContext('2d')!.getImageData(0, 0, c.width, c.height).data;
-    const b = refCtx.getImageData(0, 0, c.width, c.height).data;
-    let count = 0;
-    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) > 25) count++;
-    return count / (a.length / 4);
-  });
-  expect(changed).toBeGreaterThan(0.01);
   // No context menu, no dragging.
   expect(await canvas.evaluate((c) => c.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })))).toBe(false);
   await expect(viewer.locator('img, a[href]')).toHaveCount(0);
@@ -512,6 +495,37 @@ test('PIN lock: sealed session, asks on open and on demand, wrong PINs are count
   await dialog.getByTestId('pin-remove').click();
   await expect(page.getByText('PIN quitado')).toBeVisible();
   await expect.poll(() => page.evaluate(() => localStorage.getItem('velo.session')?.startsWith('pin1.'))).toBe(false);
+});
+
+test('decoy PIN opens an empty Velo; the real PIN opens the real one', async ({ page }) => {
+  await loginAsDemo(page);
+  await page.getByTestId('open-profile').click();
+  const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
+  await dialog.getByTestId('pin-new').fill('4821');
+  await dialog.getByTestId('pin-confirm').fill('4821');
+  await dialog.getByTestId('pin-save').click();
+  await expect(page.getByText('PIN activado')).toBeVisible();
+  await dialog.getByTestId('decoy-new').fill('4821');
+  await dialog.getByTestId('decoy-save').click();
+  await expect(page.getByText('Usa un PIN distinto al real')).toBeVisible();
+  await dialog.getByTestId('decoy-new').fill('1111');
+  await dialog.getByTestId('decoy-save').click();
+  await expect(page.getByText('PIN señuelo guardado')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cerrar' }).click();
+
+  await page.reload();
+  const lock = page.getByTestId('lock-screen');
+  await lock.getByTestId('lock-pin').fill('1111');
+  await lock.getByTestId('lock-pin').press('Enter');
+  await expect(page.getByTestId('decoy-home')).toBeVisible();
+  await expect(page.getByTestId('decoy-home')).toContainText('Aún no tienes chats');
+  await expect(page.getByText('luna')).toHaveCount(0);
+
+  await page.reload();
+  await lock.getByTestId('lock-pin').fill('4821');
+  await lock.getByTestId('lock-pin').press('Enter');
+  await expect(page.getByTestId('me-name')).toHaveText('demo');
+  await expect(page.getByTestId('decoy-home')).toHaveCount(0);
 });
 
 test('panic button: signs out and wipes this device at once', async ({ page }) => {

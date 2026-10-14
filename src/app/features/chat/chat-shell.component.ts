@@ -288,11 +288,7 @@ export class ChatShellComponent implements OnInit {
   protected async logout(): Promise<void> {
     const ok = await this.confirm.ask({ title: '¿Cerrar sesión?', text: 'Tendrás que volver a iniciar sesión en este dispositivo.', confirmLabel: 'Cerrar sesión' });
     if (!ok) return;
-    await Promise.race([this.push.disable().catch(() => undefined), new Promise((resolve) => setTimeout(resolve, 800))]);
-    this.realtime.stop();
-    this.store.reset();
-    this.friends.reset();
-    this.presence.reset();
-    this.auth.logout();
+    // Like panic: push unsubscribed, session revoked and nothing left on the device.
+    await this.panicNow();
   }
 }

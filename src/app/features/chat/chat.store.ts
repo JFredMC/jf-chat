@@ -390,7 +390,9 @@ export class ChatStore {
     if (message.pending) return 'sending';
     const others = conversation.members.filter((m) => m.user_id !== message.sender_id);
     if (!others.length) return 'sent';
-    if (others.every((m) => (m.last_read_message_id ?? 0) >= message.id)) return 'read';
+    // «Ocultar leído» (mine or theirs): ticks stop at "delivered".
+    const hidden = this.auth.user()?.hide_read_receipts || others.some((m) => m.user?.hide_read_receipts);
+    if (!hidden && others.every((m) => (m.last_read_message_id ?? 0) >= message.id)) return 'read';
     if (others.every((m) => (m.last_delivered_message_id ?? 0) >= message.id)) return 'delivered';
     return 'sent';
   }

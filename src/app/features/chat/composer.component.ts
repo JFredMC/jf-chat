@@ -79,7 +79,7 @@ export const EPHEMERAL_CHOICES: { value: number | null; label: string; short: st
         id="composer-input"
         rows="1"
         class="max-h-40 min-h-11 min-w-0 flex-1 resize-none rounded-3xl border border-gray-300 bg-gray-50 px-4 py-2.5 text-[0.95rem] text-gray-900 placeholder:text-gray-400 focus:border-cyan-400 focus:bg-white focus:ring-2 focus:ring-cyan-400/30 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:focus:bg-gray-800"
-        placeholder="Escribe un mensaje"
+        placeholder="Mensaje"
         [value]="text()"
         [attr.maxlength]="max"
         (input)="onInput($event)"

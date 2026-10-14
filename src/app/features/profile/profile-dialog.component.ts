@@ -1,3 +1,5 @@
+import { ConfirmService } from '../../core/ui/confirm.service';
+import { PanicService } from '../../core/privacy/panic.service';
 import { ChangeDetectionStrategy, Component, DestroyRef, ElementRef, computed, effect, inject, model, signal, untracked, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { errorMessage } from '../../core/api-error';
@@ -97,10 +99,18 @@ import { sameAs, strongPassword } from '../auth/validators';
           <label class="flex cursor-pointer items-start justify-between gap-4">
             <span>
               <span class="block text-sm font-medium">Ocultar «escribiendo…»</span>
-              <span class="block text-xs text-gray-500">Tu pareja no ve cuándo estás escribiendo.</span>
+              <span class="block text-xs text-gray-500">Tu pareja no ve cuándo escribes, y tú tampoco ves cuándo escribe.</span>
             </span>
             <input type="checkbox" class="switch" [checked]="!!auth.user()?.hide_typing" [disabled]="savingPrivacy()"
               (change)="savePrivacy({ hide_typing: $any($event.target).checked })" data-testid="hide-typing" />
+          </label>
+          <label class="flex cursor-pointer items-start justify-between gap-4">
+            <span>
+              <span class="block text-sm font-medium">Ocultar «leído»</span>
+              <span class="block text-xs text-gray-500">Tu pareja no sabe si leíste, y tú tampoco ves si leyó: solo «entregado».</span>
+            </span>
+            <input type="checkbox" class="switch" [checked]="!!auth.user()?.hide_read_receipts" [disabled]="savingPrivacy()"
+              (change)="savePrivacy({ hide_read_receipts: $any($event.target).checked })" data-testid="hide-read-receipts" />
           </label>
           <label class="flex cursor-pointer items-start justify-between gap-4">
             <span>
@@ -110,6 +120,22 @@ import { sameAs, strongPassword } from '../auth/validators';
             <input type="checkbox" class="switch" [checked]="brand.disguised()" (change)="brand.setDisguised($any($event.target).checked)" data-testid="disguise" />
           </label>
         </section>
+
+        <form class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" (ngSubmit)="changeUsername()" data-testid="username-section">
+          <h3 class="font-semibold">Nombre de usuario</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Cámbialo cuando quieras. Tus contactos y chats siguen igual; el nombre anterior no se guarda.</p>
+          <label class="label" for="u-name">Nuevo usuario</label>
+          <div class="flex gap-2">
+            <input id="u-name" class="input flex-1" name="username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="30"
+              [value]="newUsername()" (input)="newUsername.set($any($event.target).value)" data-testid="username-input" />
+            <button type="submit" class="btn-primary px-3 text-sm" [disabled]="savingUsername() || !usernameValid() || !usernameChanged()" data-testid="username-save">
+              {{ savingUsername() ? 'Guardando…' : 'Cambiar' }}
+            </button>
+          </div>
+          @if (newUsername() && !usernameValid()) {
+            <p class="field-error" role="alert">Entre 3 y 30 caracteres: letras, números, punto o guion bajo.</p>
+          }
+        </form>
 
         <app-security-settings class="block space-y-8" />
 
@@ -136,6 +162,20 @@ import { sameAs, strongPassword } from '../auth/validators';
           <p class="text-xs text-gray-500">Al cambiarla se cerrará tu sesión en los demás dispositivos.</p>
           <button type="submit" class="btn-secondary" [disabled]="savingPassword()">Cambiar contraseña</button>
         </form>
+
+        <form class="space-y-3 rounded-xl border border-rose-300 p-4 dark:border-rose-900" (ngSubmit)="deleteAccount()" data-testid="delete-account-section">
+          <h3 class="font-semibold text-rose-600 dark:text-rose-400">Borrar mi cuenta</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Se borra todo y para siempre: tus chats (también del lado de tu pareja), fotos, videos, contactos y la cuenta. Este dispositivo queda limpio.
+          </p>
+          <label class="label" for="d-password">Tu contraseña</label>
+          <input id="d-password" class="input" type="password" name="d-password" autocomplete="current-password"
+            [value]="deletePassword()" (input)="deletePassword.set($any($event.target).value)" data-testid="delete-password" />
+          <button type="submit" class="w-full rounded-lg bg-rose-600 px-3 py-2 text-sm font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+            [disabled]="deleting() || !deletePassword()" data-testid="delete-account">
+            {{ deleting() ? 'Borrando…' : 'Borrar mi cuenta' }}
+          </button>
+        </form>
       </div>
     </dialog>
   `,
@@ -150,6 +190,14 @@ export class ProfileDialogComponent {
   protected readonly brand = inject(BrandService);
   protected readonly savingPrivacy = signal(false);
   protected readonly savingPassword = signal(false);
+  protected readonly newUsername = signal('');
+  protected readonly deletePassword = signal('');
+  protected readonly deleting = signal(false);
+  private readonly confirm = inject(ConfirmService);
+  private readonly panic = inject(PanicService);
+  protected readonly savingUsername = signal(false);
+  protected readonly usernameValid = computed(() => /^[a-z0-9._]{3,30}$/.test(this.newUsername().trim().toLowerCase()));
+  protected readonly usernameChanged = computed(() => this.newUsername().trim().toLowerCase() !== (this.auth.user()?.username ?? ''));
   protected readonly password = this.fb.group({
     current: ['', Validators.required],
     next: ['', [Validators.required, strongPassword]],
@@ -177,6 +225,7 @@ export class ProfileDialogComponent {
         // Only when opening: later profile updates must not reset what is being edited.
         const user = untracked(() => this.auth.user());
         this.password.reset();
+        this.newUsername.set(user?.username ?? '');
         this.status.set(user?.status_message ?? '');
         this.photoError.set(null);
         if (!element.open) element.showModal();
@@ -284,6 +333,45 @@ export class ProfileDialogComponent {
       error: (error: unknown) => {
         this.savingPrivacy.set(false);
         this.toast.error(errorMessage(error, 'No se pudo guardar'));
+      },
+    });
+  }
+
+  protected async deleteAccount(): Promise<void> {
+    const password = this.deletePassword();
+    if (!password) return;
+    const ok = await this.confirm.ask({
+      title: '¿Borrar tu cuenta para siempre?',
+      text: 'Se borran tus chats, archivos, contactos y la cuenta. No se puede deshacer.',
+      confirmLabel: 'Borrar todo',
+      danger: true,
+    });
+    if (!ok) return;
+    this.deleting.set(true);
+    this.auth.deleteAccount(password).subscribe({
+      next: () => {
+        this.deletePassword.set('');
+        void this.panic.wipe();
+      },
+      error: (error: unknown) => {
+        this.deleting.set(false);
+        this.toast.error(errorMessage(error, 'No se pudo borrar la cuenta'));
+      },
+    });
+  }
+
+  protected changeUsername(): void {
+    if (!this.usernameValid() || !this.usernameChanged()) return;
+    this.savingUsername.set(true);
+    this.auth.changeUsername(this.newUsername().trim().toLowerCase()).subscribe({
+      next: (user) => {
+        this.savingUsername.set(false);
+        this.newUsername.set(user.username);
+        this.toast.success('Listo, ahora eres @' + user.username);
+      },
+      error: (error: unknown) => {
+        this.savingUsername.set(false);
+        this.toast.error(errorMessage(error, 'No se pudo cambiar el usuario'));
       },
     });
   }

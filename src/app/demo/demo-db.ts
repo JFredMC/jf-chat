@@ -16,6 +16,7 @@ export interface DbUser {
   invite_code: string;
   hide_last_seen?: boolean;
   hide_typing?: boolean;
+  hide_read_receipts?: boolean;
   /** Simulated people: they answer, type and read. */
   bot?: { online: boolean; replies: string[] };
 }
@@ -230,7 +231,7 @@ export function seedDb(now = Date.now()): DemoDb {
   // A reply with its quote, and an ephemeral message with a visible countdown.
   const hug = db.messages.find((m) => m.content.startsWith('Te guardé'))!;
   db.messages.find((m) => m.content.startsWith('Lo cobro'))!.reply_to_id = hug.id;
-  // A photo: only visible while holding it, with a watermark.
+  // A photo: only visible while holding it.
   const photo = db.messages.find((m) => m.content === '')!;
   const photoId = id();
   photo.message_type = 'image';

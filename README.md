@@ -14,7 +14,7 @@ Hecho con **Angular 22** (signals, zoneless) y **NestJS + Socket.IO + PostgreSQL
 
 | Chat | Foto: solo mientras la sostienes | Bloqueo con PIN | Efímeros |
 |---|---|---|---|
-| <img src="docs/screenshots/movil-chat.webp" alt="Chat con burbujas, cita y cuenta atrás" width="200"> | <img src="docs/screenshots/movil-foto-marca-de-agua.webp" alt="Foto con marca de agua del usuario que mira" width="200"> | <img src="docs/screenshots/movil-bloqueo-pin.webp" alt="Pantalla de bloqueo con PIN" width="200"> | <img src="docs/screenshots/movil-efimeros.webp" alt="Menú de mensajes temporales y ver una vez" width="200"> |
+| <img src="docs/screenshots/movil-chat.webp" alt="Chat con burbujas, cita y cuenta atrás" width="200"> | <img src="docs/screenshots/movil-foto.webp" alt="Foto a pantalla completa, sin marca de agua" width="200"> | <img src="docs/screenshots/movil-bloqueo-pin.webp" alt="Pantalla de bloqueo con PIN" width="200"> | <img src="docs/screenshots/movil-efimeros.webp" alt="Menú de mensajes temporales y ver una vez" width="200"> |
 
 <details>
 <summary>Escritorio</summary>
@@ -33,7 +33,7 @@ Hecho con **Angular 22** (signals, zoneless) y **NestJS + Socket.IO + PostgreSQL
 | **Autodestrucción a las 24 h** | Todo mensaje (y su foto o video) se borra de la base de datos y del almacenamiento 24 h después de enviarse. Un trabajo programado lo hace en el servidor. |
 | **«Autodestruir» el chat** | Desde la cabecera o el perfil del contacto, con confirmación: borra la conversación entera y sus archivos para los dos, al instante. |
 | **Mensajes efímeros y «ver una vez»** | 1 min, 10 min o 1 h, con cuenta atrás visible. «Ver una vez» se muestra solo mientras lo mantienes pulsado y desaparece 30 s después de leerlo. |
-| **Fotos y videos sin guardar** | Nunca se muestran en línea: se mantiene pulsado para verlos a pantalla completa, dibujados en un `<canvas>` (fotos) o sin controles (videos), con una marca de agua `@usuario · fecha hora` de quien mira. Sin menú contextual, sin arrastrar, sin descarga. URLs firmadas de 60 s, pedidas solo al pulsar. |
+| **Fotos y videos sin guardar** | Nunca se muestran en línea: se mantiene pulsado para verlos a pantalla completa, dibujados en un `<canvas>` (fotos) o sin controles (videos), sin marca de agua. Sin menú contextual, sin arrastrar, sin descarga. URLs firmadas de 60 s, pedidas solo al pulsar. |
 | **Escudo anticapturas** | El chat se oculta al perder el foco, al pasar a segundo plano, con Imprimir Pantalla / ⌘⇧3-4-5 / Win+Shift+S (y vacía el portapapeles). Imprimir está desactivado. |
 | **Bloqueo con PIN** | Pide un PIN de 4 a 8 cifras al abrir y tras 1, 5 o 15 min sin uso. La sesión guardada se cifra con el PIN (PBKDF2 + AES-GCM, WebCrypto). Cinco fallos borran el dispositivo. |
 | **Botón de pánico** | Un toque (o Esc tres veces): cierra la sesión en el servidor, quita los avisos y borra todo lo local. Sin confirmación, a propósito. |
@@ -109,6 +109,6 @@ yarn start                 # contra jf-chat-be en http://localhost:3001
 
 ## Límites honestos
 
-- Una web no puede impedir una captura hecha por el sistema operativo ni una foto con otro teléfono. El escudo y la marca de agua disuaden y dejan rastro de quién miró, pero no bloquean.
+- Una web no puede impedir una captura hecha por el sistema operativo ni una foto con otro teléfono. El escudo disuade, pero no bloquea.
 - El PIN protege la sesión guardada en este dispositivo, no la cuenta. Un PIN de 4 cifras se puede adivinar con tiempo si alguien copia el almacenamiento del navegador: usa 6 u 8.
 - Los avisos necesitan permiso del navegador. En iPhone, solo funcionan con Velo añadido a la pantalla de inicio.
