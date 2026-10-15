@@ -1,4 +1,4 @@
-import { DatePipe } from '@angular/common';
+import { DatePipe, NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -10,7 +10,7 @@ import { ToastService } from '../../core/ui/toast.service';
 @Component({
   selector: 'app-admin-page',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [DatePipe, RouterLink],
+  imports: [DatePipe, NgTemplateOutlet, RouterLink],
   template: `
     <main class="mx-auto max-w-5xl space-y-6 p-4 sm:p-6" data-testid="admin-page">
       <header class="flex items-center justify-between gap-3">
@@ -37,7 +37,7 @@ import { ToastService } from '../../core/ui/toast.service';
         </section>
       }
 
-      <section class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-800">
+      <section class="hidden overflow-x-auto rounded-xl sm:block border border-gray-200 dark:border-gray-800">
         <table class="w-full text-left text-sm" data-testid="admin-users">
           <thead class="bg-gray-50 text-xs uppercase text-gray-500 dark:bg-gray-900">
             <tr>
@@ -63,20 +63,7 @@ import { ToastService } from '../../core/ui/toast.service';
                   </span>
                 </td>
                 <td class="p-3">
-                  @if (u.role !== 'admin') {
-                    <div class="flex flex-wrap gap-1.5">
-                      <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="toggleBlock(u)">
-                        {{ u.status === 'active' ? 'Bloquear' : 'Desbloquear' }}
-                      </button>
-                      <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="logout(u)">Cerrar sesiones</button>
-                      <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="invite(u)">Nueva invitación</button>
-                      @if (u.has_invite) {
-                        <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="revokeInvite(u)">Revocar invitación</button>
-                      }
-                      <button type="button" class="rounded-lg bg-rose-600 px-2 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
-                        [disabled]="busy()" (click)="remove(u)">Eliminar</button>
-                    </div>
-                  }
+                  <ng-container *ngTemplateOutlet="acts; context: { $implicit: u }" />
                 </td>
               </tr>
             } @empty {
@@ -85,6 +72,42 @@ import { ToastService } from '../../core/ui/toast.service';
           </tbody>
         </table>
       </section>
+      <ul class="space-y-3 sm:hidden" data-testid="admin-user-cards">
+        @for (u of users(); track u.id) {
+          <li class="space-y-2 rounded-xl border border-gray-200 p-3 text-sm dark:border-gray-800">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-medium">{{ u.username }}
+                @if (u.role === 'admin') { <span class="ml-1 rounded bg-gray-200 px-1.5 text-xs dark:bg-gray-700">admin</span> }
+              </span>
+              <span [class]="u.status === 'active' ? 'text-emerald-600' : 'text-rose-600'">{{ u.status === 'active' ? 'Activo' : 'Bloqueado' }}</span>
+            </div>
+            <div class="text-xs text-gray-500">
+              Creado {{ u.created_at | date: 'dd/MM/yy' }} · Última vez {{ u.last_seen ? (u.last_seen | date: 'dd/MM/yy HH:mm') : 'oculta' }}
+            </div>
+            @if (codes()[u.id]; as code) { <div class="font-mono text-xs text-emerald-600">{{ code }}</div> }
+            <ng-container *ngTemplateOutlet="acts; context: { $implicit: u }" />
+          </li>
+        } @empty {
+          <li class="p-4 text-center text-gray-500">{{ loading() ? 'Cargando…' : 'Sin usuarios' }}</li>
+        }
+      </ul>
+
+      <ng-template #acts let-u>
+                  @if (u.role !== 'admin') {
+                    <div class="flex flex-wrap gap-1.5">
+                      <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="toggleBlock(asUser(u))">
+                        {{ u.status === 'active' ? 'Bloquear' : 'Desbloquear' }}
+                      </button>
+                      <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="logout(asUser(u))">Cerrar sesiones</button>
+                      <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="invite(asUser(u))">Nueva invitación</button>
+                      @if (u.has_invite) {
+                        <button type="button" class="btn-secondary px-2 py-1 text-xs" [disabled]="busy()" (click)="revokeInvite(asUser(u))">Revocar invitación</button>
+                      }
+                      <button type="button" class="rounded-lg bg-rose-600 px-2 py-1 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                        [disabled]="busy()" (click)="remove(asUser(u))">Eliminar</button>
+                    </div>
+                  }
+      </ng-template>
     </main>
   `,
 })
@@ -98,6 +121,10 @@ export class AdminPage {
   protected readonly codes = signal<Record<number, string>>({});
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
+
+  protected asUser(u: unknown): AdminUser {
+    return u as AdminUser;
+  }
 
   public constructor() {
     void this.reload();
