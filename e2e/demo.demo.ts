@@ -557,7 +557,7 @@ test('content-free notifications: preview with only a code; the demo sends none'
   await loginAsDemo(page);
   await page.getByTestId('open-profile').click();
   const dialog = page.getByRole('dialog', { name: 'Mi perfil' });
-  await expect(dialog.getByTestId('push-preview')).toContainText(/^\s*\d{6}\s*Así se ve un aviso\s*$/);
+  await expect(dialog.getByTestId('push-preview')).toContainText(/^\s*\d{6}\s*Así se ve un aviso \(tu navegador puede añadir su nombre\)\s*$/);
   await expect(dialog.getByTestId('push-hint')).toContainText('en la demo no se envían');
   await dialog.getByTestId('push-toggle').click();
   await expect(dialog.getByTestId('push-toggle')).not.toBeChecked();
