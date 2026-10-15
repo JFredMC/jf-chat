@@ -38,7 +38,7 @@ import { sameAs, strongPassword } from '../auth/validators';
           </div>
           <div class="min-w-0 flex-1 text-center sm:text-left">
             <h3 id="photo-title" class="font-semibold">Foto de perfil</h3>
-            <p class="text-sm text-gray-500">&#64;{{ auth.user()?.username }} · tu usuario no se puede cambiar.</p>
+            <p class="text-sm text-gray-500">&#64;{{ auth.user()?.username }} · puedes cambiar tu usuario aquí abajo.</p>
             <p id="photo-help" class="mt-1 text-xs text-gray-500">JPG, PNG o WebP de hasta 5 MB. Se recorta al centro en forma cuadrada.</p>
             <input #fileInput type="file" class="sr-only" [accept]="accept" (change)="pick($event)" aria-describedby="photo-help" data-testid="avatar-input" id="avatar-input" />
             <div class="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
@@ -61,6 +61,22 @@ import { sameAs, strongPassword } from '../auth/validators';
             }
           </div>
         </section>
+
+        <form class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" (ngSubmit)="changeUsername()" data-testid="username-section">
+          <h3 class="font-semibold">Nombre de usuario</h3>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Cámbialo cuando quieras. Tus contactos y chats siguen igual; el nombre anterior no se guarda.</p>
+          <label class="label" for="u-name">Nuevo usuario</label>
+          <div class="flex gap-2">
+            <input id="u-name" class="input flex-1" name="username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="30"
+              [value]="newUsername()" (input)="newUsername.set($any($event.target).value)" data-testid="username-input" />
+            <button type="submit" class="btn-primary px-3 text-sm" [disabled]="savingUsername() || !usernameValid() || !usernameChanged()" data-testid="username-save">
+              {{ savingUsername() ? 'Guardando…' : 'Cambiar' }}
+            </button>
+          </div>
+          @if (newUsername() && !usernameValid()) {
+            <p class="field-error" role="alert">Entre 3 y 30 caracteres: letras, números, punto o guion bajo.</p>
+          }
+        </form>
 
         <form class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" (submit)="$event.preventDefault(); saveStatus()" aria-labelledby="status-title">
           <h3 id="status-title" class="font-semibold">Estado personal</h3>
@@ -121,21 +137,6 @@ import { sameAs, strongPassword } from '../auth/validators';
           </label>
         </section>
 
-        <form class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" (ngSubmit)="changeUsername()" data-testid="username-section">
-          <h3 class="font-semibold">Nombre de usuario</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400">Cámbialo cuando quieras. Tus contactos y chats siguen igual; el nombre anterior no se guarda.</p>
-          <label class="label" for="u-name">Nuevo usuario</label>
-          <div class="flex gap-2">
-            <input id="u-name" class="input flex-1" name="username" autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="30"
-              [value]="newUsername()" (input)="newUsername.set($any($event.target).value)" data-testid="username-input" />
-            <button type="submit" class="btn-primary px-3 text-sm" [disabled]="savingUsername() || !usernameValid() || !usernameChanged()" data-testid="username-save">
-              {{ savingUsername() ? 'Guardando…' : 'Cambiar' }}
-            </button>
-          </div>
-          @if (newUsername() && !usernameValid()) {
-            <p class="field-error" role="alert">Entre 3 y 30 caracteres: letras, números, punto o guion bajo.</p>
-          }
-        </form>
 
         <app-security-settings class="block space-y-8" />
 
