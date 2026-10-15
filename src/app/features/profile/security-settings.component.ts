@@ -4,12 +4,12 @@ import { PIN_PATTERN } from '../../core/auth/session-vault';
 import { LOCK_CHOICES, PinLockService } from '../../core/privacy/pin-lock.service';
 import { PushNotificationsService } from '../../core/privacy/push.service';
 import { ToastService } from '../../core/ui/toast.service';
-import { BrandLogoComponent } from '../../shared/brand.component';
+import { } from '../../shared/brand.component';
 
 /** Device security: PIN lock and content-free notifications. */
 @Component({
   selector: 'app-security-settings',
-  imports: [FormsModule, BrandLogoComponent],
+  imports: [FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="space-y-3 border-t border-gray-200 pt-6 dark:border-gray-800" aria-labelledby="pin-title" data-testid="pin-section">
@@ -69,7 +69,7 @@ import { BrandLogoComponent } from '../../shared/brand.component';
       <div class="flex items-start justify-between gap-4">
         <span>
           <h3 id="push-title" class="font-semibold">Avisos discretos</h3>
-          <span class="block text-xs text-gray-500">Solo si te escriben tras 6 horas de silencio. El aviso muestra un código al azar: ni quién, ni qué.</span>
+          <span class="block text-xs text-gray-500">Solo si te escriben tras 2 horas de silencio. El aviso muestra solo un código al azar: ni quién, ni qué, sin ícono. Tocarlo no abre nada.</span>
         </span>
         <input type="checkbox" class="switch mt-1" [checked]="push.state() === 'on'" [disabled]="push.state() === 'busy' || push.state() === 'unsupported'"
           (change)="togglePush($any($event.target))" aria-labelledby="push-title" data-testid="push-toggle" />
@@ -78,10 +78,9 @@ import { BrandLogoComponent } from '../../shared/brand.component';
         <p class="text-xs text-amber-700 dark:text-amber-300" data-testid="push-hint">{{ text }}</p>
       }
       <div class="flex items-center gap-3 rounded-xl bg-gray-100 p-3 dark:bg-gray-800" aria-label="Así se ve un aviso" data-testid="push-preview">
-        <app-brand-logo [size]="32" />
         <span class="min-w-0 text-sm">
           <span class="block font-semibold tabular-nums">{{ sample }}</span>
-          <span class="block text-xs text-gray-500">Así se ve un aviso</span>
+          <span class="block text-xs text-gray-500">Así se ve un aviso (tu navegador puede añadir su nombre)</span>
         </span>
       </div>
     </section>
