@@ -1,6 +1,7 @@
 // Velo · Web Push worker. It only shows a notification: no caching, no data.
 // The payload is just a random code ({ "code": "483920" }); the notification
-// never says who wrote or what, and uses the neutral "Notas" icon.
+// shows only that code as its title: no body, no icon, no badge, no image and
+// no data (nothing to open). The OS/browser may still add its own name line.
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
 
@@ -15,11 +16,9 @@ self.addEventListener('push', (event) => {
   }
   event.waitUntil(
     self.registration.showNotification(code || '••••••', {
-      tag: 'velo',
+      body: '',
+      tag: 'n',
       renotify: true,
-      icon: 'icons/notas-192.png',
-      badge: 'icons/notas-192.png',
-      data: {},
     }),
   );
 });

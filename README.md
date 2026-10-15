@@ -33,20 +33,20 @@ Hecho con **Angular 22** (signals, zoneless) y **NestJS + Socket.IO + PostgreSQL
 | **Autodestrucción a las 24 h** | Todo mensaje (y su foto o video) se borra de la base de datos y del almacenamiento 24 h después de enviarse. Un trabajo programado lo hace en el servidor. |
 | **«Autodestruir» el chat** | Desde la cabecera o el perfil del contacto, con confirmación: borra la conversación entera y sus archivos para los dos, al instante. |
 | **Mensajes efímeros y «ver una vez»** | 1 min, 10 min o 1 h, con cuenta atrás visible. «Ver una vez» se muestra solo mientras lo mantienes pulsado y desaparece 30 s después de leerlo. |
-| **Fotos y videos sin guardar** | Nunca se muestran en línea: se mantiene pulsado para verlos a pantalla completa, dibujados en un `<canvas>` (fotos) o sin controles (videos), sin marca de agua. Sin menú contextual, sin arrastrar, sin descarga. URLs firmadas de 60 s, pedidas solo al pulsar. |
+| **Fotos y videos sin guardar** | Nunca se muestran en línea: se mantiene pulsado para verlos a pantalla completa, dibujados en un `<canvas>` (fotos) o sin controles (videos), sin marca de agua. Antes de subir, las fotos se redibujan sin metadatos (GPS, cámara, fecha) y con nombre neutro; el servidor también los quita. Sin menú contextual, sin arrastrar, sin descarga. URLs firmadas de 60 s, pedidas solo al pulsar. |
 | **Escudo anticapturas** | El chat se oculta al perder el foco, al pasar a segundo plano, con Imprimir Pantalla / ⌘⇧3-4-5 / Win+Shift+S (y vacía el portapapeles). Imprimir está desactivado. |
-| **Bloqueo con PIN** | Pide un PIN de 4 a 8 cifras al abrir y tras 1, 5 o 15 min sin uso. La sesión guardada se cifra con el PIN (PBKDF2 + AES-GCM, WebCrypto). Cinco fallos borran el dispositivo. |
-| **Botón de pánico** | Un toque (o Esc tres veces): cierra la sesión en el servidor, quita los avisos y borra todo lo local. Sin confirmación, a propósito. |
-| **Avisos sin contenido** | Web Push solo con el primer mensaje tras 6 h de silencio. El aviso muestra un código al azar con un ícono neutro: ni quién, ni qué. |
+| **Bloqueo con PIN** | Pide un PIN de 4 a 8 cifras al abrir y tras 1, 5 o 15 min sin uso. La sesión guardada se cifra con el PIN (PBKDF2 + AES-GCM, WebCrypto). Cinco fallos borran el dispositivo. Salir de la app bloquea al instante. **PIN señuelo** opcional: abre un Velo vacío. |
+| **Botón de pánico** | Un toque (o Esc tres veces): cierra la sesión en el servidor, quita los avisos y borra todo lo local. Sin confirmación, a propósito. «Cerrar sesión» también borra todo lo local. |
+| **Avisos sin contenido** | Web Push solo con el primer mensaje tras 2 h de silencio. El aviso muestra solo un código al azar, sin ícono ni texto: ni quién, ni qué. Tocarlo solo lo cierra. |
 | **Contactos solo por invitación** | No hay búsqueda de personas: se conecta con un código `XXXX-XXXX-XX` que puedes regenerar. |
-| **Cuentas sin datos personales** | Solo usuario y contraseña. Sin nombre, sin correo, sin teléfono. |
-| **Ocultar presencia** | «Última conexión» y «escribiendo…» se pueden ocultar. |
-| **Modo discreto** | La pestaña, el favicon y la app instalada se llaman «Notas» y nunca muestran no leídos. |
+| **Cuentas sin datos personales** | Solo usuario y contraseña. Sin nombre, sin correo, sin teléfono. El usuario se puede cambiar cuando quieras (el anterior no se guarda) y «Borrar mi cuenta» elimina todo en el servidor. |
+| **Ocultar presencia** | «Última conexión», «escribiendo…» y «leído» se pueden ocultar; «escribiendo…» y «leído» son recíprocos. |
+| **Modo discreto** | La pestaña, el favicon y la app instalada se llaman «Notas»; el título de la pestaña es siempre «Notas», sin nombre de página ni no leídos. |
 | **Endurecimiento** | CSP estricta, cabeceras de seguridad, límites de peticiones, bloqueo de inicio de sesión tras 5 fallos, access token de 10 min solo en memoria y refresh token rotativo, RLS en la base de datos. |
 
 ## Chat
 
-- Burbujas con cola, agrupadas por remitente, con hora y ✓ / ✓✓ / ✓✓ leído.
+- Burbujas con cola, agrupadas por remitente, con hora y ✓ / ✓✓ / ✓✓ leído (si nadie oculta «leído»).
 - Responder citando: botón, doble clic o deslizar a la derecha en el móvil. Tocar la cita lleva al original.
 - Selector de emojis (los recientes solo en memoria).
 - Perfil del contacto desde la cabecera: estado, desde cuándo son contactos y su configuración de privacidad.

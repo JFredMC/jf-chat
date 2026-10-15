@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/guards';
 import { IS_DEMO } from './core/config';
+import { adminGuard } from './core/admin/admin.guard';
 
 /**
  * With PAGES_MODE=api the demo is a separate build under /jf-chat/demo/.
@@ -40,6 +41,12 @@ export const routes: Routes = [
     path: 'chat',
     canActivate: [authGuard],
     loadComponent: () => import('./features/chat/chat-shell.component').then((m) => m.ChatShellComponent),
+  },
+  {
+    path: 'admin',
+    title: 'Administración',
+    canActivate: [authGuard, adminGuard],
+    loadComponent: () => import('./features/admin/admin.page').then((m) => m.AdminPage),
   },
   { path: 'demo', canMatch: [openDemoBuild], children: [] },
   // Old links (the previous version used /login).
