@@ -9,12 +9,14 @@ import { BrandService } from '../../core/ui/brand.service';
 import { ToastService } from '../../core/ui/toast.service';
 import { AVATAR_ACCEPT, avatarFileError, cropAvatar } from '../../shared/avatar-image';
 import { AvatarComponent } from '../../shared/avatar.component';
+import { RouterLink } from '@angular/router';
+import { AdminApi } from '../../core/admin/admin.api';
 import { SecuritySettingsComponent } from './security-settings.component';
 import { sameAs, strongPassword } from '../auth/validators';
 
 @Component({
   selector: 'app-profile-dialog',
-  imports: [ReactiveFormsModule, AvatarComponent, SecuritySettingsComponent],
+  imports: [RouterLink, ReactiveFormsModule, AvatarComponent, SecuritySettingsComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <dialog
@@ -164,6 +166,10 @@ import { sameAs, strongPassword } from '../auth/validators';
           <button type="submit" class="btn-secondary" [disabled]="savingPassword()">Cambiar contraseña</button>
         </form>
 
+        @if (isAdmin()) {
+          <a routerLink="/admin" (click)="open.set(false)" class="btn-secondary block text-center" data-testid="admin-link">Administración</a>
+        }
+
         <form class="space-y-3 rounded-xl border border-rose-300 p-4 dark:border-rose-900" (ngSubmit)="deleteAccount()" data-testid="delete-account-section">
           <h3 class="font-semibold text-rose-600 dark:text-rose-400">Borrar mi cuenta</h3>
           <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -196,6 +202,7 @@ export class ProfileDialogComponent {
   protected readonly deleting = signal(false);
   private readonly confirm = inject(ConfirmService);
   private readonly panic = inject(PanicService);
+  protected readonly isAdmin = signal(false);
   protected readonly savingUsername = signal(false);
   protected readonly usernameValid = computed(() => /^[a-z0-9._]{3,30}$/.test(this.newUsername().trim().toLowerCase()));
   protected readonly usernameChanged = computed(() => this.newUsername().trim().toLowerCase() !== (this.auth.user()?.username ?? ''));
@@ -220,6 +227,9 @@ export class ProfileDialogComponent {
 
   public constructor() {
     inject(DestroyRef).onDestroy(() => this.cancelPhoto());
+    inject(AdminApi)
+      .isAdmin()
+      .subscribe((ok) => this.isAdmin.set(ok));
     effect(() => {
       const element = this.dialog().nativeElement;
       if (this.open()) {
